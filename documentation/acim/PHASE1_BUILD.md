@@ -71,3 +71,10 @@ multimeter on the battery. Correct with 100_250 firmware -> board divider is
 `make 100_250` on release_7_00 also builds cleanly:
 flash2 450480 B / 475120 B (94.81 %), `100_250.bin` sha256
 `6229ffd98716fdb57d3eea913c0b08d80f340d223222d8e5cb78c3217f572e2d`
+
+## Result of the voltage check
+
+Board on 100_250 firmware reads 20.5 V input; a multimeter on the bench PSU agrees
+within 1 V. An HI200-wired board would have read ~25.5 V. Conclusion: the board's
+divider is 150k/4.7k and **`100_250` is the hwconf for all further work**
+(`make 100_250`). `go_foc_hi200` is not used.
