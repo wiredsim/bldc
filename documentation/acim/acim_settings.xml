@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ConfigParams>
+    <Params>
+        <config_name>
+            <longName>none</longName>
+            <type>3</type>
+            <transmittable>0</transmittable>
+            <description />
+            <cDefine />
+            <valString>acim_config</valString>
+            <maxLen>0</maxLen>
+        </config_name>
+        <hw_name>
+            <longName>ACIM</longName>
+            <type>0</type>
+            <transmittable>0</transmittable>
+            <description />
+            <cDefine />
+        </hw_name>
+        <enable>
+            <longName>Enable ACIM Mode</longName>
+            <type>5</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Run the motor as an AC induction motor. Read only while the motor is stopped. When off, the firmware behaves exactly like stock. Requires Motor Type FOC and Sensor Mode Sensorless in the motor configuration; ACIM picks its own speed source below.&lt;/p&gt;</description>
+            <cDefine>ACIM_ENABLE</cDefine>
+            <valInt>0</valInt>
+        </enable>
+        <speed_src>
+            <longName>Speed Source</longName>
+            <type>4</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Encoder: rotor speed from the ABI encoder on the sensor port (pole pairs = Encoder Ratio, direction = Encoder Inverted). Sensorless: voltage-model observer with an I/f start below the Sensorless Min Frequency. Sensorless is Rs-sensitive and weak at low speed.&lt;/p&gt;</description>
+            <cDefine>ACIM_SPEED_SRC</cDefine>
+            <valInt>0</valInt>
+            <enumNames>Encoder</enumNames>
+            <enumNames>Sensorless</enumNames>
+        </speed_src>
+        <id_mag>
+            <longName>Magnetizing Current (Id)</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;D-axis current that builds the rotor flux. Start low and raise it during commissioning.&lt;/p&gt;</description>
+            <cDefine>ACIM_ID_MAG</cDefine>
+            <editorDecimalsDouble>2</editorDecimalsDouble>
+            <editorScale>1</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>400</maxDouble>
+            <minDouble>0</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>1</stepDouble>
+            <valDouble>10</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> A</suffix>
+            <vTx>9</vTx>
+        </id_mag>
+        <tau_r>
+            <longName>Rotor Time Constant</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Lr/Rr. The current model's angle depends only on this. Sweep it upward from a low guess at moderate speed: overestimating it over-fluxes the motor at high speed.&lt;/p&gt;</description>
+            <cDefine>ACIM_TAU_R</cDefine>
+            <editorDecimalsDouble>1</editorDecimalsDouble>
+            <editorScale>1000</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>5</maxDouble>
+            <minDouble>0.001</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>1</stepDouble>
+            <valDouble>0.1</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> ms</suffix>
+            <vTx>9</vTx>
+        </tau_r>
+        <lm>
+            <longName>Magnetizing Inductance</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Used for flux telemetry, the BEMF feed-forward and the voltage-model observer. The current-model angle does not depend on it.&lt;/p&gt;</description>
+            <cDefine>ACIM_LM</cDefine>
+            <editorDecimalsDouble>1</editorDecimalsDouble>
+            <editorScale>1000000</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>0.1</maxDouble>
+            <minDouble>1e-06</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>1</stepDouble>
+            <valDouble>0.0001</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> µH</suffix>
+            <vTx>9</vTx>
+        </lm>
+        <lr_lm>
+            <longName>Rotor Inductance Ratio (Lr/Lm)</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;1 + rotor leakage ratio. Voltage model and torque estimate only.&lt;/p&gt;</description>
+            <cDefine>ACIM_LR_LM</cDefine>
+            <editorDecimalsDouble>3</editorDecimalsDouble>
+            <editorScale>1</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>2</maxDouble>
+            <minDouble>1</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>0.01</stepDouble>
+            <valDouble>1.03</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix />
+            <vTx>9</vTx>
+        </lr_lm>
+        <current_max>
+            <longName>ACIM Current Limit</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Cap on the total current vector in ACIM mode, on top of the motor current limits, so first runs are gentle.&lt;/p&gt;</description>
+            <cDefine>ACIM_CURRENT_MAX</cDefine>
+            <editorDecimalsDouble>1</editorDecimalsDouble>
+            <editorScale>1</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>500</maxDouble>
+            <minDouble>0</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>1</stepDouble>
+            <valDouble>40</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> A</suffix>
+            <vTx>9</vTx>
+        </current_max>
+        <slip_max>
+            <longName>Slip Limit</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Electrical slip limit. Iq is clamped to 2*pi*slip*tau_r*i_mr, so the commanded slip never exceeds this. This also stops Iq from running away while the flux is low.&lt;/p&gt;</description>
+            <cDefine>ACIM_SLIP_MAX</cDefine>
+            <editorDecimalsDouble>2</editorDecimalsDouble>
+            <editorScale>1</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>50</maxDouble>
+            <minDouble>0.1</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>0.5</stepDouble>
+            <valDouble>8</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> Hz</suffix>
+            <vTx>9</vTx>
+        </slip_max>
+        <flux_build_time>
+            <longName>Flux Build Time</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Minimum time holding Id before Iq is allowed. 0 = 3 x rotor time constant.&lt;/p&gt;</description>
+            <cDefine>ACIM_FLUX_BUILD_TIME</cDefine>
+            <editorDecimalsDouble>0</editorDecimalsDouble>
+            <editorScale>1000</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>5</maxDouble>
+            <minDouble>0</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>10</stepDouble>
+            <valDouble>0</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> ms</suffix>
+            <vTx>9</vTx>
+        </flux_build_time>
+        <flux_hold_time>
+            <longName>Flux Hold Time</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Keep the motor magnetized for this long after the torque request goes to zero, so a quick re-start does not wait for the flux to build again.&lt;/p&gt;</description>
+            <cDefine>ACIM_FLUX_HOLD_TIME</cDefine>
+            <editorDecimalsDouble>2</editorDecimalsDouble>
+            <editorScale>1</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>60</maxDouble>
+            <minDouble>0</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>0.1</stepDouble>
+            <valDouble>0.5</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> s</suffix>
+            <vTx>9</vTx>
+        </flux_hold_time>
+        <sl_min_hz>
+            <longName>Sensorless Min Frequency</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Sensorless: hand over from I/f to the observer above 1.2 x this electrical frequency and back below 0.8 x. Also the frequency above which the flux plausibility checks run.&lt;/p&gt;</description>
+            <cDefine>ACIM_SL_MIN_HZ</cDefine>
+            <editorDecimalsDouble>1</editorDecimalsDouble>
+            <editorScale>1</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>100</maxDouble>
+            <minDouble>1</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>0.5</stepDouble>
+            <valDouble>10</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> Hz</suffix>
+            <vTx>9</vTx>
+        </sl_min_hz>
+        <sl_if_ramp>
+            <longName>Sensorless I/f Ramp</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Sensorless: frequency ramp of the open-loop rotating current vector at start.&lt;/p&gt;</description>
+            <cDefine>ACIM_SL_IF_RAMP</cDefine>
+            <editorDecimalsDouble>1</editorDecimalsDouble>
+            <editorScale>1</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>500</maxDouble>
+            <minDouble>0.1</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>1</stepDouble>
+            <valDouble>20</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> Hz/s</suffix>
+            <vTx>9</vTx>
+        </sl_if_ramp>
+        <obs_bw>
+            <longName>Observer Crossover</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Crossover between the current model (below) and the voltage model (above).&lt;/p&gt;</description>
+            <cDefine>ACIM_OBS_BW</cDefine>
+            <editorDecimalsDouble>1</editorDecimalsDouble>
+            <editorScale>1</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>50</maxDouble>
+            <minDouble>0.1</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>0.5</stepDouble>
+            <valDouble>3</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> Hz</suffix>
+            <vTx>9</vTx>
+        </obs_bw>
+        <fault_flux_err>
+            <longName>Flux Mismatch Fault</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Fault (ACIM_FLUX) when the voltage-model and current-model rotor flux disagree by more than this for 100 ms. Catches wrong pole pairs and a wrong tau_r.&lt;/p&gt;</description>
+            <cDefine>ACIM_FAULT_FLUX_ERR</cDefine>
+            <editorDecimalsDouble>0</editorDecimalsDouble>
+            <editorScale>100</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>5</maxDouble>
+            <minDouble>0.05</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>5</stepDouble>
+            <valDouble>0.5</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> %</suffix>
+            <vTx>9</vTx>
+        </fault_flux_err>
+        <fault_slip_fac>
+            <longName>Slip Fault Factor</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Fault (ACIM_SLIP) when the requested current needs more than this x the slip limit for 200 ms, meaning the flux collapsed while torque was requested.&lt;/p&gt;</description>
+            <cDefine>ACIM_FAULT_SLIP_FAC</cDefine>
+            <editorDecimalsDouble>1</editorDecimalsDouble>
+            <editorScale>1</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>100</maxDouble>
+            <minDouble>1</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>0.5</stepDouble>
+            <valDouble>3</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> x</suffix>
+            <vTx>9</vTx>
+        </fault_slip_fac>
+    </Params>
+    <SerOrder>
+        <ser>enable</ser>
+        <ser>speed_src</ser>
+        <ser>id_mag</ser>
+        <ser>tau_r</ser>
+        <ser>lm</ser>
+        <ser>lr_lm</ser>
+        <ser>current_max</ser>
+        <ser>slip_max</ser>
+        <ser>flux_build_time</ser>
+        <ser>flux_hold_time</ser>
+        <ser>sl_min_hz</ser>
+        <ser>sl_if_ramp</ser>
+        <ser>obs_bw</ser>
+        <ser>fault_flux_err</ser>
+        <ser>fault_slip_fac</ser>
+    </SerOrder>
+    <Grouping>
+        <group>
+            <groupName>ACIM</groupName>
+            <subgroup>
+                <subgroupName>General</subgroupName>
+                <subgroupParams>
+                    <param>enable</param>
+                    <param>speed_src</param>
+                </subgroupParams>
+            </subgroup>
+            <subgroup>
+                <subgroupName>Motor</subgroupName>
+                <subgroupParams>
+                    <param>id_mag</param>
+                    <param>tau_r</param>
+                    <param>lm</param>
+                    <param>lr_lm</param>
+                </subgroupParams>
+            </subgroup>
+            <subgroup>
+                <subgroupName>Limits</subgroupName>
+                <subgroupParams>
+                    <param>current_max</param>
+                    <param>slip_max</param>
+                    <param>flux_build_time</param>
+                    <param>flux_hold_time</param>
+                </subgroupParams>
+            </subgroup>
+            <subgroup>
+                <subgroupName>Sensorless</subgroupName>
+                <subgroupParams>
+                    <param>sl_min_hz</param>
+                    <param>sl_if_ramp</param>
+                    <param>obs_bw</param>
+                </subgroupParams>
+            </subgroup>
+            <subgroup>
+                <subgroupName>Faults</subgroupName>
+                <subgroupParams>
+                    <param>fault_flux_err</param>
+                    <param>fault_slip_fac</param>
+                </subgroupParams>
+            </subgroup>
+        </group>
+    </Grouping>
+</ConfigParams>
