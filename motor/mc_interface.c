@@ -518,6 +518,8 @@ const char* mc_interface_fault_to_string(mc_fault_code fault) {
 	case FAULT_CODE_OVERSPEED: return "FAULT_CODE_OVERSPEED";
 	case FAULT_CODE_UNDERSPEED: return "FAULT_CODE_UNDERSPEED";
 	case FAULT_CODE_ABS_OVERSPEED: return "FAULT_CODE_ABS_OVERSPEED";
+	case FAULT_CODE_ACIM_FLUX: return "FAULT_CODE_ACIM_FLUX";
+	case FAULT_CODE_ACIM_SLIP: return "FAULT_CODE_ACIM_SLIP";
 	}
 
 	return "Unknown fault";

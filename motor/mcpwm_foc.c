@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include "virtual_motor.h"
 #include "foc_math.h"
+#include "acim.h"
 
 // Private variables
 static volatile bool m_dccal_done = false;
@@ -588,6 +589,8 @@ void mcpwm_foc_init(mc_configuration *conf_m1, mc_configuration *conf_m2) {
 			"Enable HFI plotting. 0: off, 1: DFT, 2: Raw",
 			"[en]",
 			terminal_plot_hfi);
+
+	acim_init();
 
 	m_init_done = true;
 }
@@ -3439,9 +3442,12 @@ void mcpwm_foc_adc_int_handler(void *p, uint32_t flags) {
 
 		FOC_PROFILE_LINE_FINE();
 
+		// The sensorless open-loop start below adds to iq_set_tmp; ACIM uses the request.
+		const float acim_iq_request = iq_set_tmp;
+
 		// Set motor phase
 		{
-			if (!motor_now->m_phase_override) {
+			if (!motor_now->m_phase_override && !acim_active(is_second_motor)) {
 				foc_observer_update(state_now->v_alpha, state_now->v_beta,
 						state_now->i_alpha, state_now->i_beta,
 						dt, &(motor_now->m_observer_state), &motor_now->m_phase_now_observer, motor_now);
@@ -3584,6 +3590,18 @@ void mcpwm_foc_adc_int_handler(void *p, uint32_t flags) {
 				break;
 			}
 
+			if (acim_active(is_second_motor)) {
+				// Induction motor: rotor-flux angle, magnetizing Id and slip-limited Iq.
+				// Open-loop and handbrake modes keep working; the estimator only tracks.
+				bool acim_takeover = !motor_now->m_phase_override &&
+						motor_now->m_control_mode < CONTROL_MODE_HANDBRAKE;
+				acim_isr_driven(is_second_motor, conf_now, dt, acim_takeover,
+						state_now->i_alpha, state_now->i_beta, state_now->v_alpha, state_now->v_beta,
+						motor_now->m_phase_now_encoder, encoder_is_being_used,
+						conf_now->foc_temp_comp ? motor_now->m_res_temp_comp : conf_now->foc_motor_r,
+						acim_iq_request, (float*)&state_now->phase, &id_set_tmp, &iq_set_tmp);
+			}
+
 			if (motor_now->m_control_mode == CONTROL_MODE_HANDBRAKE) {
 				// Force the phase to 0 in handbrake mode so that the current simply locks the rotor.
 				state_now->phase = 0.0;
@@ -3611,7 +3629,7 @@ void mcpwm_foc_adc_int_handler(void *p, uint32_t flags) {
 		// Apply MTPA. See: https://github.com/vedderb/bldc/pull/179
 		const float ld_lq_diff = conf_now->foc_motor_ld_lq_diff;
 		if (conf_now->foc_mtpa_mode != MTPA_MODE_OFF && ld_lq_diff != 0.0 &&
-				motor_now->m_control_mode != CONTROL_MODE_OPENLOOP_PHASE) {
+				motor_now->m_control_mode != CONTROL_MODE_OPENLOOP_PHASE && !acim_active(is_second_motor)) {
 			const float lambda = conf_now->foc_motor_flux_linkage;
 
 			float iq_ref = iq_set_tmp;
@@ -3632,6 +3650,11 @@ void mcpwm_foc_adc_int_handler(void *p, uint32_t flags) {
 			motor_now->m_i_fw_set = motor_now->m_i_fw_override;
 		} else {
 			foc_run_fw(motor_now, dt);
+		}
+
+		if (acim_active(is_second_motor)) {
+			// PM field weakening would replace the magnetizing current
+			motor_now->m_i_fw_set = 0.0;
 		}
 
 //		id_set_tmp -= motor_now->m_i_fw_set;
@@ -3737,6 +3760,10 @@ void mcpwm_foc_adc_int_handler(void *p, uint32_t flags) {
 
 			}
 
+			acim_isr_undriven(is_second_motor, conf_now, dt, motor_now->m_phase_now_encoder,
+					encoder_is_being_used, conf_now->foc_temp_comp ? motor_now->m_res_temp_comp : conf_now->foc_motor_r,
+					(float*)&state_now->phase);
+
 			utils_fast_sincos_better(state_now->phase,
 					(float*)&state_now->phase_sin,
 					(float*)&state_now->phase_cos);
@@ -3788,6 +3815,10 @@ void mcpwm_foc_adc_int_handler(void *p, uint32_t flags) {
 			state_now->vq_int -= motor_now->m_pll_speed * conf_now->foc_motor_flux_linkage;
 		}
 
+		if (acim_active(is_second_motor)) {
+			state_now->vq_int = state_now->vq - acim_bemf_q(is_second_motor, conf_now);
+		}
+
 		// Update corresponding modulation
 		/* voltage_normalize = 1/(2/3*V_bus) */
 		const float voltage_normalize = 1.5 / state_now->v_bus;
@@ -3813,6 +3844,11 @@ void mcpwm_foc_adc_int_handler(void *p, uint32_t flags) {
 		phase_for_speed_est = motor_now->m_phase_now_observer;
 		break;
 	};
+
+	if (acim_active(is_second_motor)) {
+		// Report rotor speed, not the stator (flux) frequency
+		phase_for_speed_est = acim_rotor_phase(is_second_motor);
+	}
 
 	// Run PLL for speed estimation
 	foc_pll_run(phase_for_speed_est, dt, &motor_now->m_pll_phase, &motor_now->m_pll_speed, conf_now);
@@ -3846,7 +3882,7 @@ void mcpwm_foc_adc_int_handler(void *p, uint32_t flags) {
 	FOC_PROFILE_LINE_FINE();
 
 	// Update tachometer (resolution = 60 deg as for BLDC)
-	float ph_tmp = state_now->phase;
+	float ph_tmp = acim_active(is_second_motor) ? phase_for_speed_est : state_now->phase;
 	utils_norm_angle_rad(&ph_tmp);
 	int step = (int)floorf((ph_tmp + M_PI) / (2.0 * M_PI) * 6.0);
 	utils_truncate_number_int(&step, 0, 5);
@@ -3936,6 +3972,13 @@ static void timer_update(motor_all_state_t *motor, float dt) {
 	// field weakening current.
 	utils_sys_lock_cnt();
 	utils_step_towards((float*)&motor->m_current_off_delay, 0.0, dt);
+	if (acim_active(motor != &m_motor_1) && !motor->m_motor_released) {
+		// Keep the induction motor magnetized for a while after the request goes to zero
+		float acim_hold = acim_hold_time_left(motor != &m_motor_1);
+		if (motor->m_current_off_delay < acim_hold) {
+			motor->m_current_off_delay = acim_hold;
+		}
+	}
 	if (!motor->m_phase_override && motor->m_state == MC_STATE_RUNNING &&
 			(motor->m_control_mode == CONTROL_MODE_CURRENT ||
 					motor->m_control_mode == CONTROL_MODE_CURRENT_BRAKE ||
@@ -4639,7 +4682,12 @@ static void control_current(motor_all_state_t *motor, float dt) {
 
 	FOC_PROFILE_LINE_FINE();
 
-	if (motor->m_control_mode < CONTROL_MODE_HANDBRAKE && conf_now->foc_cc_decoupling != FOC_CC_DECOUPLING_DISABLED) {
+	if (acim_active(motor != &m_motor_1)) {
+		if (motor->m_control_mode < CONTROL_MODE_HANDBRAKE) {
+			acim_decoupling(motor != &m_motor_1, (mc_configuration*)conf_now, state_m->id, state_m->iq,
+					&dec_vd, &dec_vq, &dec_bemf);
+		}
+	} else if (motor->m_control_mode < CONTROL_MODE_HANDBRAKE && conf_now->foc_cc_decoupling != FOC_CC_DECOUPLING_DISABLED) {
 		switch (conf_now->foc_cc_decoupling) {
 		case FOC_CC_DECOUPLING_CROSS:
 			dec_vd = state_m->iq * motor->m_speed_est_fast * motor->p_lq; // m_speed_est_fast is ωe in [rad/s]
