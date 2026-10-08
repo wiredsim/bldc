@@ -43,3 +43,31 @@ Flash headroom is tight. ACIM code must stay small (target < 8 KB) or use space
 freed elsewhere.
 
 Nothing has been flashed.
+
+## Board check (2026-10-08)
+
+VESC Tool on the actual board reports `Fw: v5.03, Hw: 100_250, Status: BETA 69,
+Phase Filters: Yes`. So the vendor ships the Trampa `100_250` config
+(`hwconf/trampa/100_250/hw_100_250.h`), not `go_foc_hi200`. "BETA 69" is a
+non-release test build, so no upstream binary will byte-match it.
+
+The two configs disagree on things that matter for current control:
+
+| define                 | 100_250 (on board)  | go_foc_hi200        |
+|------------------------|---------------------|---------------------|
+| VIN_R1 / VIN_R2        | 150k / 4.7k (x32.9) | 56k / 2.2k (x26.5)  |
+| INVERTED_SHUNT_POLARITY| yes                 | no                  |
+| shunt placement        | low side            | phase shunts        |
+| phase filters          | yes (PC9)           | no                  |
+| dead time              | 660 ns              | 1000 ns             |
+| Vin limit              | 97 V                | 75 V                |
+
+Shunt (0.5 mOhm / 3), amp gain (20), V_REG and pin/ADC maps are identical.
+
+Discriminating test (read-only): compare VESC Tool's input voltage reading with a
+multimeter on the battery. Correct with 100_250 firmware -> board divider is
+150k/4.7k. If the board were HI200-wired, 100_250 firmware would read ~24 % high.
+
+`make 100_250` on release_7_00 also builds cleanly:
+flash2 450480 B / 475120 B (94.81 %), `100_250.bin` sha256
+`6229ffd98716fdb57d3eea913c0b08d80f340d223222d8e5cb78c3217f572e2d`
