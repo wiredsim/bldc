@@ -41,12 +41,20 @@ Implementation choices:
 - **Measured currents.** Feed the model with measured i_alpha/i_beta, not the setpoints.
   ODrive feeds setpoints, which goes wrong when the current loop saturates at high speed.
 - **Discretization.** Exact rotation plus exponential decay per step, not forward Euler:
-  rotate (i_mr_a, i_mr_b) by w_r*dt, then `i_mr += (1 - exp(-dt/tau_r)) * (i - i_mr)`.
+  rotate (i_mr_a, i_mr_b) by the rotor's electrical angle increment plus slip, then
+  `i_mr += (1 - exp(-dt/tau_r)) * (i - i_mr)`. In encoder mode the increment is the raw
+  encoder angle change since the last sample, not PLL speed x dt. The Phase 3 simulation
+  showed that the PLL lags under hard acceleration and gave a 39 deg flux angle error, where
+  the raw increment gives 0.3 deg.
   `exp(-dt/tau_r)` is precomputed whenever the config changes. It stays stable for any tau_r
   and speed and costs one sincos per sample, which the ISR already does.
 - **Accumulated state, no increments.** The state is the flux vector itself. Unlike the
   2020 Split thesis, nothing is reconstructed from per-step deltas, and there is no
   hard-coded Lr/Lm.
+- **No angle advance.** The PM path advances the observer angle by half a period
+  (`mcpwm_foc.c:3451`). ACIM returns the flux angle at the sample instant and the PI
+  integrators absorb the output delay. The advance biased id/iq and cost 3.5% flux in the
+  simulation.
 - **Torque/slip relations** (rotor-flux frame, used for limits and telemetry):
   `w_slip = iq / (tau_r * i_mr)`, `T = 1.5 * pp * (Lm^2/Lr) * i_mr * iq`.
 
@@ -54,11 +62,12 @@ Implementation choices:
 
 | Mode | w_r source | Use |
 |------|-----------|-----|
-| `ENCODER` | AS5047P on ABI (sensor port, `SENSOR_PORT_MODE_ABI`), electrical angle = mech * pole pairs, PLL-filtered | Primary. The current model is exact apart from parameter error. |
+| `ENCODER` | AS5047P on ABI (sensor port, `SENSOR_PORT_MODE_ABI`), electrical angle = mech * pole pairs. The current model uses raw angle increments; the speed estimate is `pll_w + kp*err` (PLL integrator plus proportional term, so it does not lag) | Primary. The current model is exact apart from parameter error. |
 | `SENSORLESS` | Estimated: w_r = w_psi - w_slip, where w_psi comes from a voltage-model flux estimate | First tests, until the encoder arrives. |
 
-Sensorless observer (to be validated in the Phase 3 simulation before any C is written).
-It is a closed-loop hybrid, Jansen-Lorenz style:
+Voltage-model observer (validated in the Phase 3 simulation, `SIMULATION.md`). It runs in
+both modes: in `SENSORLESS` it provides the angle, in `ENCODER` it is only a plausibility
+check for the faults in section 5. It is a closed-loop hybrid, Jansen-Lorenz style:
 
     psi_s  = integral( v - Rs*i + u_corr ) dt         (voltage model, stator flux)
     psi_r_vm = (Lr/Lm) * (psi_s - sigmaLs*i)           (rotor flux from voltage model)
@@ -69,11 +78,25 @@ It is a closed-loop hybrid, Jansen-Lorenz style:
     w_r_est = w_psi - iq/(tau_r*i_mr)
 
 At low speed the corrector makes the current model dominate. At speed, the voltage model
-dominates and tau_r errors matter less. The crossover is set by Kp/Ki (a bandwidth of about
-2-5 Hz). Below a minimum stator frequency an induction motor is not observable sensorlessly,
-so `SENSORLESS` starts with **I/f**: build flux at standstill, then rotate the current vector
-open-loop at a slow ramp with Iq at the requested current. Hand over to the observer
-above `acim_sl_min_hz`, and drop back to I/f below it with hysteresis.
+dominates and tau_r errors matter less. The crossover is set by `acim_obs_bw`
+(Kp = 2 wc, Ki = wc^2, wc = 2 pi obs_bw; default 3 Hz). The voltage reaching the motor is
+taken from the duty cycles of the previous period, matching when it was actually applied.
+
+Below a minimum stator frequency an induction motor is not observable sensorlessly, so
+`SENSORLESS` starts with **I/f**:
+
+- Build flux at standstill, then rotate a **single current vector** of magnitude
+  sqrt(Id_mag^2 + Iq_req^2) open-loop, ramping its frequency at `acim_sl_if_ramp` in the
+  direction of the request. A first version commanded Id/Iq against the I/f angle and rocked
+  the rotor back and forth.
+- With no torque request the I/f frequency ramps back to zero instead of dragging the rotor.
+- Hand over to the observer above 1.2 x `acim_sl_min_hz` (12 Hz by default), and back to I/f
+  below 0.8 x (8 Hz). At handover the current model is re-seeded from the voltage model, and
+  the plausibility faults are blanked for 250 ms.
+- In closed loop the sensorless current model is rotated by the voltage-model angle
+  increment minus the commanded slip.
+- Rs is the sensitive parameter: at low speed the IR drop on this motor exceeds the
+  back-EMF. That is why `acim_sl_min_hz` defaults to 10 Hz and `foc_temp_comp` should be on.
 
 `sigmaLs` is the inductance VESC already measures (`foc_motor_l`, the high-frequency
 transient inductance). `Rs` is `foc_motor_r` (temperature-compensated `m_res_temp_comp`).
@@ -90,6 +113,9 @@ transient inductance). `Rs` is `foc_motor_r` (temperature-compensated `m_res_tem
   exactly as it does physically, so a quick re-start only waits for the remaining flux to
   build. Starting onto a spinning rotor (encoder mode) works the same way.
 - `flux_build_time` defaults to 3 x tau_r.
+- Open question for Phase 4: in sensorless mode the HOLD state has nothing to hold the angle
+  against at standstill, so it may be better to stop PWM at once when the request drops to
+  zero, and re-flux on the next start.
 - In RUN, Iq is clamped to the slip limit: `|iq| <= slip_max * tau_r * i_mr`. This also stops
   Iq from running away while i_mr is still low.
 - Id has priority in the current limit. Iq is limited to `sqrt(Imax^2 - Id^2)`, which is
@@ -174,10 +200,10 @@ from EEPROM even when the page is hidden.
 | `acim_flux_build_time` | s | 0 (= 3 x tau_r) | Minimum time holding Id before Iq is allowed |
 | `acim_flux_hold_time` | s | 0.5 | Keep magnetized after torque goes to zero, to avoid re-flux delays |
 | `acim_current_max` | A | 40 | ACIM-mode cap on \|I\| (applied on top of mcconf limits), so first runs are gentle |
-| `acim_sl_min_hz` | Hz (elec) | 5 | Sensorless: below this stator frequency, run I/f |
-| `acim_sl_if_ramp` | Hz/s | 5 | Sensorless I/f frequency ramp |
+| `acim_sl_min_hz` | Hz (elec) | 10 | Sensorless: hand over to the observer above 1.2 x this, back to I/f below 0.8 x |
+| `acim_sl_if_ramp` | Hz/s | 20 | Sensorless I/f frequency ramp |
 | `acim_obs_bw` | Hz | 3 | Sensorless: VM/CM crossover bandwidth (sets Kp, Ki) |
-| `acim_fault_flux_err` | % | 50 | Fault when VM and CM flux disagree by more than this for 100 ms (sensorless), or when i_mr exceeds 1.5 x Id_mag (any mode) |
+| `acim_fault_flux_err` | % | 50 | Fault when voltage-model and current-model flux disagree by more than this for 100 ms |
 | `acim_fault_slip_fac` | x | 3 | Fault when the unclamped slip demand exceeds this x slip_max for 200 ms (flux collapse) |
 
 Pole pairs come from the existing `foc_encoder_ratio` (VESC already treats it as electrical
@@ -202,9 +228,13 @@ so the existing fault log, LED and VESC Tool fault display apply.
 
 | Fault | Condition |
 |-------|-----------|
-| `FAULT_CODE_ACIM_FLUX` | NaN or Inf in the estimator state. i_mr > 1.5 x Id_mag. Sensorless: \|psi_vm - psi_cm\| / \|psi_cm\| > `acim_fault_flux_err` for 100 ms while above `acim_sl_min_hz` |
-| `FAULT_CODE_ACIM_SLIP` | Unclamped slip demand > `acim_fault_slip_fac` x slip_max for 200 ms. This means flux collapsed while torque was requested, for example from a wrong tau_r or encoder direction |
+| `FAULT_CODE_ACIM_FLUX` | NaN or Inf in the estimator state. i_mr > 1.5 x `acim_current_max` (the current model low-passes the measured current, so only a numerical fault gets there). Any mode, once the stator frequency is above `acim_sl_min_hz` and outside the 250 ms handover blanking: \|psi_vm - psi_cm\| / \|psi_cm\| > `acim_fault_flux_err` for 100 ms. In simulation this catches pole pairs set wrong within 150-165 ms of torque |
+| `FAULT_CODE_ACIM_SLIP` | Unclamped slip demand > `acim_fault_slip_fac` x slip_max for 200 ms, meaning flux collapsed while torque was requested. Encoder mode, same enable conditions as above: the slip seen by the voltage model differs from the commanded slip beyond tolerance for 50 ms. In simulation this catches a lost encoder signal in 51 ms |
 | `FAULT_CODE_ENCODER_FAULT` (existing) | Encoder mode with no encoder configured, or the existing `encoder_check_faults()` |
+
+A backwards encoder is **not** caught at runtime: the motor stalls near standstill, where the
+voltage model has no information, and draws current without faulting. The simulation
+confirmed this. It is caught at commissioning instead, by `acim_enc_check` (section 6).
 
 ## 6. Telemetry
 
@@ -213,6 +243,10 @@ telemetry uses channels that need no VESC Tool changes:
 
 - **Terminal `acim_status`**: state, i_mr (A), psi_r (mWb = Lm x i_mr), slip (Hz), rotor and
   stator electrical frequency, Id/Iq target vs measured, and fault counters.
+- **Terminal `acim_enc_check`**: commissioning check. Rotates the field open-loop at low
+  current through a few electrical turns in each direction and reports encoder direction and
+  counts per electrical turn against `foc_encoder_inverted` and `foc_encoder_ratio`. Run it
+  once after fitting the encoder and after any wiring change.
 - **Terminal `acim_plot [on|off]`**: streams to VESC Tool's Experiment plot (the same mechanism
   as `terminal_plot_hfi`, `mcpwm_foc.c:5384`). It streams i_mr, slip Hz, w_r, w_s, Id and Iq,
   plus psi_vm vs psi_cm in sensorless mode.
@@ -251,6 +285,10 @@ file will carry the MIT notice and attribution above.
    revolution.
 2. tau_r and Lm: no-load test (Lm from V/(w*I) at synchronous speed), then a tau_r sweep for
    peak torque per amp. Until then, the defaults are guesses.
-3. Sensorless observer gains and the lowest usable speed: Phase 3.
+3. Sensorless observer gains and the lowest usable speed. Answered by Phase 3: obs_bw 3 Hz,
+   handover at 12 Hz electrical, usable but Rs-sensitive. See `SIMULATION.md`.
+5. tau_r sweep direction. Phase 3 showed that over-estimating tau_r over-fluxes the motor
+   and runs out of voltage at high speed, so the Phase 5 sweep starts from a low guess and
+   works upward at moderate speed.
 4. Whether sampling on V0 only (low-side shunts) is adequate at the BSG's top electrical
    frequency. This board cannot sample in V0+V7 (no phase shunts).
