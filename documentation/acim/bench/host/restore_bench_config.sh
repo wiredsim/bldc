@@ -5,11 +5,11 @@
 set -e
 cd "$(dirname "$0")"
 python3 vesc_mcconf.py --set \
-  l_current_max=60 l_current_min=-20 l_in_current_max=60 l_in_current_min=-20 l_abs_current_max=90 \
+  l_current_max=160 l_current_min=-20 l_in_current_max=60 l_in_current_min=-20 l_abs_current_max=240 \
   l_max_erpm=6000 l_min_erpm=-6000 l_max_vin=60 l_battery_cut_start=44.8 l_battery_cut_end=42 \
   foc_phase_filter_enable=0 foc_dt_us=0.53 foc_motor_r=0.0078 foc_motor_l=0.00001207 \
   foc_motor_ld_lq_diff=0.000000589 foc_current_kp=0.0121 foc_current_ki=7.8 \
   m_sensor_port_mode=1 m_encoder_counts=4000 foc_encoder_ratio=4 si_motor_poles=8
-python3 vesc_acim_conf.py enable=1 speed_src=0 id_mag=20 tau_r=0.030 lm=0.0001 lr_lm=1.06 \
-  current_max=60 sl_min_hz=50 sl_if_ramp=40
+python3 vesc_acim_conf.py enable=1 speed_src=0 id_mag=75 tau_r=0.040 lm=0.0001 lr_lm=1.06 \
+  current_max=120 sl_min_hz=50 sl_if_ramp=40
 python3 vesc_term.py acim_status

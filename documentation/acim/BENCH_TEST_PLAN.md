@@ -365,6 +365,21 @@ sweep: **tau_r = 30 ms**, two thirds of the 45 ms from the step 5 decay. The opt
 shallow within about 15% and steep above it (88 ms takes twice as long). Input current
 stayed at 0.5 A, so the battery was not limiting.
 
+**Correction (later the same day): sweep with Iq = Id.** Fastest spin-up at a fixed Iq finds
+the right tau_r only when Iq is about equal to Id. With Iq < Id, a tau_r error turns the
+controller's frame and part of the large Id becomes torque current, so the misaligned
+settings win until the current angle reaches 45 degrees (max torque per amp). At Id 75 A,
+Iq 5 A the time fell in proportion to tau_r all the way down to 8 ms (0.455 s) with no
+minimum. Repeated with Id = Iq = 20 A, 600 to 2400 ERPM:
+
+| tau_r (ms) | 25 | 32 | **40** | 50 | 63 |
+|---|---|---|---|---|---|
+| Mean time (s) | 1.024 | 0.925 | **0.897** | 0.917 | 1.017 |
+
+**tau_r = 40 ms**, the same as the release-decay value at every current from 20 to 150 A.
+The 30 ms above (Iq 15 A, Id 20 A) was pulled low by the same effect. Run the sweep with
+`iq` equal to Id_mag.
+
 ## 11. Ramping up
 
 Only after steps 6 to 10 pass. In this order, one at a time: raise Max ERPM, ACIM Current
@@ -380,7 +395,11 @@ Bench result, 2026-10-09, firmware df41aff2, 14S battery at 52.6 V, no load on t
 | Motor Current Max 60 A, Absolute Max 90 A, Battery Current Max 60 A, ACIM Current Limit 60 A | 5 A, 3 s; 30 A to 4500 ERPM | 0 to 4607 ERPM in 1.8 s at Iq 30 A. Slip sat at the 8 Hz `slip_max` clamp (30 A / (2 pi x 30 ms x 20 A) = 8 Hz): above about 30 A of Iq, raise Id_mag towards the knee (30 to 35 A) or slip_max |
 | Battery Current Min -20 A, Motor Current Max Brake -20 A | +20 A to 4000 ERPM, then -20 A to 500 ERPM | Braked in 1.16 s, battery current -0.4 A peak (about 24 W of braking power at 1000 rpm, as expected with only the rotor inertia). No faults |
 
-Not done yet: Id_mag above 20 A, and anything under load.
+Id_mag 75 A (half the ~150 A saturation point, see step 5): 5 A Iq reaches 5832 ERPM in
+3 s (1194 at Id_mag 20 A); 20 A Iq gives about 240 rad/s^2, about 1.1 Nm with the 0.0046
+kg m^2 rotor, against 0.9 Nm predicted. No faults, FETs under 37 C.
+
+Not done yet: anything under load.
 
 ## Reporting back
 
