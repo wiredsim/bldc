@@ -197,8 +197,12 @@ trips ACIM_FLUX at speed):
 | psi_r (mWb) | 1.9 to 2.1 | 3.1 | 4.3 to 4.5 | 6.3 | 7.7 | 10.1 |
 | tau_r from the decay (ms) | 38 to 41 | 41 | 40 to 42 | 40 | 37 | 39 |
 
-**No saturation up to 100 A**: Lm^2/Lr is flat at about 100 uH within the scatter. Lm is
-about 106 uH, Lr/Lm about 1.06. The decay tau_r is about 40 ms at every current; the step 10
+Extended to 120 A: Lm^2/Lr 94 uH, psi_r 11.3 mWb (-6%); 150 A: 87 uH, 13.0 mWb (-13%).
+Battery current peaked at 8.4 A and the FETs reached 37 C.
+
+**Saturation starts between 120 and 150 A**: below 100 A Lm^2/Lr is flat at about 100 uH. By
+the rule above (L down 10 to 15%), **Id_mag is about 150 A**, and ACIM runs should start at
+about half, 75 A. Lm is about 106 uH unsaturated, Lr/Lm about 1.06. The decay tau_r is about 40 ms at every current; the step 10
 spin-up sweep gives 30 ms, which is the value to run with.
 
 The original `no_load.lisp` procedure follows for reference.
