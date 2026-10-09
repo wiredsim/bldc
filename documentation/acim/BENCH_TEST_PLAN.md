@@ -119,6 +119,11 @@ Run `no_load.lisp`. It spins the motor open-loop at 6000 ERPM (100 Hz electrical
 1000 rpm at 6 pole pairs), steps the current from 60 A down to 10 A, and then lets go and
 times the voltage decay. Expected output, one line per current, then tau_r:
 
+Max ERPM must be at least `erpm` / 0.8 for this step (7500 for the default 6000 ERPM).
+VESC starts cutting current at 80% of Max ERPM (`l_erpm_start`) and reaches zero at 100%,
+so with the 3000 ERPM cap from the safety settings the field gets no current and every
+point reads 0. Put the cap back to 3000 before step 6.
+
 ```
 I  60.0 A   V  3.344 V   L    88.3 uH   psi  5.300 mWb
 ...

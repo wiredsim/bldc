@@ -23,7 +23,7 @@
 (define meas 1.0)           ; s averaging time per point
 (define rec 1.5)            ; s of decay to record
 
-(define rs (conf-get 'foc-motor-r))
+(define rs (/ (conf-get 'foc-motor-r) 1000.0)) ; conf-get returns milliohms
 (define w (* 2.0 3.14159265 (/ erpm 60.0)))
 
 (defun mag (a b) (sqrt (+ (* a a) (* b b))))
