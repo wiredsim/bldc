@@ -59,6 +59,9 @@ _Static_assert(ACIM_CONF_WORDS + 1 <= EEPROM_VARS_HW, "ACIM config does not fit 
 // Private variables
 static acim_config m_conf;
 static acim_core_conf_t m_core_conf;
+// Light-load flux reduction floor (fraction of Id_mag), 0 = off. Runtime only, set from
+// LispBM with (acim-flux-opt x); not on the ACIM page yet.
+static float m_flux_opt = 0.0;
 static acim_core_t m_core;
 static volatile bool m_active = false;
 static volatile bool m_fault_sent = false;
@@ -227,6 +230,7 @@ static void conf_apply(const acim_config *conf) {
 	cc.obs_bw = c.obs_bw;
 	cc.fault_flux_err = c.fault_flux_err;
 	cc.fault_slip_fac = c.fault_slip_fac;
+	cc.id_min_frac = m_flux_opt;
 
 	utils_sys_lock_cnt();
 	m_conf = c;
@@ -518,6 +522,10 @@ static void terminal_status(int argc, const char **argv) {
 	commands_printf("Config: Id_mag %.1f A, tau_r %.1f ms, Lm %.1f uH, Lr/Lm %.3f, I_max %.1f A, slip_max %.1f Hz",
 			(double)m_conf.id_mag, (double)(m_conf.tau_r * 1e3), (double)(m_conf.lm * 1e6),
 			(double)m_conf.lr_lm, (double)m_conf.current_max, (double)m_conf.slip_max);
+	if (m_flux_opt > 0.0) {
+		commands_printf("Light-load flux reduction: floor %.2f x Id_mag, Id target now %.1f A",
+				(double)m_flux_opt, (double)m_core.id_dyn);
+	}
 	commands_printf(" ");
 }
 
@@ -660,12 +668,34 @@ static lbm_value ext_acim_wr(lbm_value *args, lbm_uint argn) {
 	return lbm_enc_float(m_core.wr / (2.0 * M_PI));
 }
 
+// (acim-flux-opt) returns the light-load flux floor, (acim-flux-opt x) sets it: x is the
+// fraction of Id_mag that Id may drop to at light load, 0 turns the reduction off.
+static lbm_value ext_acim_flux_opt(lbm_value *args, lbm_uint argn) {
+	if (argn == 1 && lbm_is_number(args[0])) {
+		float f = lbm_dec_as_float(args[0]);
+		if (f < 0.0) {
+			f = 0.0;
+		}
+		if (f > 1.0) {
+			f = 1.0;
+		}
+		utils_sys_lock_cnt();
+		m_flux_opt = f;
+		m_core_conf.id_min_frac = f;
+		utils_sys_unlock_cnt();
+	} else if (argn != 0) {
+		return ENC_SYM_TERROR;
+	}
+	return lbm_enc_float(m_flux_opt);
+}
+
 static void load_extensions(bool main_found) {
 	if (!main_found) {
 		lbm_add_extension("acim-flux", ext_acim_flux);
 		lbm_add_extension("acim-slip", ext_acim_slip);
 		lbm_add_extension("acim-state", ext_acim_state);
 		lbm_add_extension("acim-wr", ext_acim_wr);
+		lbm_add_extension("acim-flux-opt", ext_acim_flux_opt);
 	}
 }
 #endif

@@ -51,6 +51,7 @@ typedef enum {
 typedef struct {
 	bool sensorless;
 	float id_mag;
+	float id_min_frac;      // light-load flux reduction: floor as a fraction of id_mag, 0 = off
 	float tau_r;
 	float lm;
 	float lr_lm;
@@ -106,6 +107,7 @@ typedef struct {
 	float psr_vm_a, psr_vm_b;
 	float vm_th, vm_w, vm_w_int;
 	float vm_w_gate;        // |vm_w| low-passed, gates the voltage-model checks [rad/s]
+	float id_dyn;           // flux target with light-load reduction [A]
 	float vm_th_raw, vm_th_raw_prev;
 	float w_sl_obs;
 

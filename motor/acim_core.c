@@ -45,6 +45,7 @@
 #define ACIM_PLAUS_TIME     0.05f
 #define ACIM_HANDOVER_BLANK 0.25f
 #define ACIM_VM_GATE_TAU    0.05f  // s, filter on |vm_w| before it gates the plausibility checks
+#define ACIM_FLUX_OPT_FALL  0.5f   // s, light-load flux reduction: time to fall from id_mag to the floor
 
 #ifdef ACIM_HOST_TEST
 static void acim_sincos(float a, float *s, float *c) {
@@ -286,7 +287,29 @@ void acim_core_update(acim_core_t *s, const acim_core_conf_t *c,
 	// (in->i_avail, 0 = not given). The flux target must fit inside it with room for some Iq,
 	// or i_mr never reaches the FLUXING exit threshold and the motor never makes torque.
 	const float imax = in->i_avail > 0.0f ? fminf(c->current_max, in->i_avail) : c->current_max;
-	const float id_mag = fminf(c->id_mag, 0.9f * imax);
+	const float id_mag_max = fminf(c->id_mag, 0.9f * imax);
+
+	// Light-load flux reduction (encoder mode). The Iq request is read as a torque request,
+	// the torque it would give at full flux (id_mag_max * iq_request). The cheapest currents
+	// for that torque are Id = Iq = sqrt(id_mag_max * |iq_request|), so Id follows that between
+	// a floor and id_mag_max, and Iq is scaled up by id_mag_max / i_mr below (which also covers
+	// the tau_r lag while the flux builds). Id rises at once and falls slowly.
+	const bool flux_opt = c->id_min_frac > 0.0f && !c->sensorless;
+	float id_mag = id_mag_max;
+	if (flux_opt) {
+		float want = fmaxf(sqrtf(id_mag_max * fabsf(in->iq_request)), c->id_min_frac * id_mag_max);
+		if (want > id_mag_max) {
+			want = id_mag_max;
+		}
+		if (want >= s->id_dyn) {
+			s->id_dyn = want;
+		} else {
+			s->id_dyn -= fminf(s->id_dyn - want, id_mag_max * dt / ACIM_FLUX_OPT_FALL);
+		}
+		id_mag = s->id_dyn;
+	} else {
+		s->id_dyn = id_mag_max;
+	}
 
 	if (!in->driven) {
 		s->state = ACIM_STATE_OFF;
@@ -382,8 +405,10 @@ void acim_core_update(acim_core_t *s, const acim_core_conf_t *c,
 	if (run_state) {
 		const float imr_eff = (c->sensorless && s->if_active) ? id_mag : imr;
 		const float iq_slip_max = ACIM_TWO_PI * c->slip_max_hz * c->tau_r * imr_eff;
-		s->iq_unclamped = in->iq_request;
-		iq_ref = clampf(in->iq_request, iq_slip_max);
+		// Same torque as iq_request at full flux; below 10% flux the slip clamp limits it anyway
+		const float iq_cmd = flux_opt ? in->iq_request * id_mag_max / fmaxf(imr, 0.1f * id_mag_max) : in->iq_request;
+		s->iq_unclamped = iq_cmd;
+		iq_ref = clampf(iq_cmd, iq_slip_max);
 
 		// Flux-collapse detector: torque wanted but flux far too low for it
 		if (fabsf(in->iq_request) > c->fault_slip_fac * iq_slip_max &&

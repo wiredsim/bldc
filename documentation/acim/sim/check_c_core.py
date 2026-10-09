@@ -32,6 +32,7 @@ def build():
     f = ctypes.c_float
     lib.h_conf.argtypes = [ctypes.c_int] + [f] * 13
     lib.h_set_i_avail.argtypes = [f]
+    lib.h_set_flux_opt.argtypes = [f]
     lib.h_update.argtypes = [f, ctypes.c_int, f, f, f, f, f, ctypes.c_int, f, f, f, f, ctypes.POINTER(f)]
     return lib
 
@@ -55,6 +56,7 @@ class CCoreController:
         LIBC.h_conf(1 if ac.speed_src == S.SRC_SENSORLESS else 0, ac.id_mag, ac.tau_r, ac.lm, ac.lr_lm,
                     ac.slip_max_hz, ac.flux_build_time, 0.5, ac.current_max, ac.sl_min_hz,
                     ac.sl_if_ramp, ac.obs_bw, ac.fault_flux_err, ac.fault_slip_fac)
+        LIBC.h_set_flux_opt(getattr(ac, "flux_opt", 0.0))
         self.res = (ctypes.c_float * 15)()
         self.vd_int = self.vq_int = 0.0
         self.va_now = self.vb_now = self.va_next = self.vb_next = 0.0
@@ -225,6 +227,27 @@ def case_ilimit():
         S.steady(log, "te", 1.0, 1.5), max(log["rpm"]), ctl.fault or "none")
 
 
+
+def case_fluxopt(frac):
+    """Light-load flux reduction (C core only): Iq request 15 A for 1.5 s, then a step to 60 A.
+    Reports the stator current magnitude at light load (copper loss goes with its square) and
+    how long the torque takes to reach 90% of its value 0.4 s after the step."""
+    def fn():
+        mp = S.MotorParams()
+        vc = S.VescConf(mp)
+        ac = S.AcimConf()
+        ac.flux_opt = frac
+        log, ctl, _ = S.simulate(mp, vc, ac, 2.0, lambda t: 15.0 if t < 1.5 else 60.0, load=R.fan(), log_every=1)
+        light = [i for i, t in enumerate(log["t"]) if 1.2 <= t < 1.5]
+        i2 = sum(log["id"][i] ** 2 + log["iq"][i] ** 2 for i in light) / len(light)
+        te_light = sum(log["te"][i] for i in light) / len(light)
+        te_end = S.steady(log, "te", 1.85, 2.0)
+        t90 = next((t for t, te in zip(log["t"], log["te"]) if t >= 1.5 and te >= 0.9 * te_end), None)
+        return "floor %.1f: light load |I| %.1f A (%.2f Nm), torque 90%% %s after the step to 60 A (%.1f Nm), fault %s" % (
+            frac, math.sqrt(i2), te_light, "%.0f ms" % ((t90 - 1.5) * 1e3) if t90 else "not reached", te_end, ctl.fault or "none")
+    return fn
+
+
 def main():
     global LIBC
     LIBC = build()
@@ -251,6 +274,8 @@ def main():
         print(lines[-1], flush=True)
     lines.append("| E encoder signal lost at 1.0 s | %s | %s |" % (case_enc_lost(False), case_enc_lost(True)))
     lines.append("| F current limit below Id_mag | - | %s |" % run(True, case_ilimit))
+    lines.append("| G light-load flux reduction off | - | %s |" % run(True, case_fluxopt(0.0)))
+    lines.append("| G light-load flux reduction, floor 0.3 | - | %s |" % run(True, case_fluxopt(0.3)))
     print(lines[-1])
     lines.append("")
     lines.append("Case A columns: torque / flux angle error at the 150 A, 250 A and -150 A steps.")

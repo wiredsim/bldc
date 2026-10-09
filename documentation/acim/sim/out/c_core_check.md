@@ -13,5 +13,7 @@
 | E pole pairs 8 (true 6) | fault ACIM_FLUX at 0.350 s, max 824 rpm | fault ACIM_FLUX at 0.350 s, max 823 rpm |
 | E encoder signal lost at 1.0 s | fault ACIM_SLIP at 1.051 s | fault ACIM_SLIP at 1.051 s |
 | F current limit below Id_mag | - | limit 50 A (Id_mag 100 A): RUN after 126 ms, 1.01 Nm at 1.0 to 1.5 s, max 635 rpm, fault none |
+| G light-load flux reduction off | - | floor 0.0: light load |I| 101.1 A (1.54 Nm), torque 90% 1 ms after the step to 60 A (6.1 Nm), fault none |
+| G light-load flux reduction, floor 0.3 | - | floor 0.3: light load |I| 54.8 A (1.54 Nm), torque 90% 16 ms after the step to 60 A (6.1 Nm), fault none |
 
 Case A columns: torque / flux angle error at the 150 A, 250 A and -150 A steps.

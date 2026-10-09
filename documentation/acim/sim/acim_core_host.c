@@ -14,6 +14,10 @@ void h_set_i_avail(float a) {
 	I_AVAIL = a;
 }
 
+void h_set_flux_opt(float f) {
+	C.id_min_frac = f;
+}
+
 void h_reset(void) {
 	acim_core_reset(&S);
 }
