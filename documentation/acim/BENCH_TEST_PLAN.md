@@ -430,7 +430,23 @@ hundredths of a Nm of friction). The model gives about 0.045 Nm per A of Iq at 7
 2.7 Nm at 60 A, but J came from the same model, so an absolute torque check (torque arm and
 scale) is still needed. No faults, FETs under 30 C.
 
-Not done yet: anything under load.
+First load test, a friction pad on the pulley (Id_mag 75 A, second pack):
+- Torque control is the wrong mode for dry friction (nearly constant torque): below the
+  friction torque the rotor stalls, above it it accelerates away. Reverse breakaway was at
+  Iq -24 A (about 1.1 Nm on the model); coast-down from 4400 ERPM gave about 0.4 Nm on a
+  lighter setting.
+- **VESC speed mode (set-rpm) produced no Iq with ACIM enabled**: Iq stayed 0 for 5 s at a
+  -4000 ERPM setpoint with the rotor stopped. Open issue, cause not found yet. Also, ACIM
+  clamps Id_mag to Motor Current Max, so lowering that limit lowers the flux.
+- A LispBM PI speed loop (`speed_pi.lisp`: PI on encoder speed into set-current, Iq clamped
+  to 30 A) held -4000 ERPM (1020 rpm) at Iq about -27.7 A, about 1.25 Nm and 133 W
+  mechanical on the model. Battery about 270 W (VESC estimate x 1.25), so about 50%
+  efficiency: 75 A of flux costs about 65 W of copper loss at this light load. The pad then
+  heated and gripped harder until the rotor stalled at the 30 A clamp.
+- A friction pad is fine for spot checks, not for steady power: a controllable load is
+  needed, and flux reduction at light load is worth adding.
+
+Not done yet: steady load, absolute torque (torque arm), efficiency map.
 
 ## Reporting back
 
