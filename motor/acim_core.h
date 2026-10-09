@@ -76,6 +76,7 @@ typedef struct {
 	bool enc_valid;
 	float iq_request;       // what the rest of the firmware asks for [A]
 	float iq_request_min;   // |iq_request| below this is "no torque request"
+	float i_avail;          // largest current magnitude the loop may drive [A], 0 = not limited
 	float rs;               // stator resistance [Ohm]
 	float sigma_ls;         // transient inductance [H] (foc_motor_l)
 } acim_core_in_t;

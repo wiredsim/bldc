@@ -282,6 +282,12 @@ void acim_core_update(acim_core_t *s, const acim_core_conf_t *c,
 	const float build_t = c->flux_build_time > 0.0f ? c->flux_build_time : 3.0f * c->tau_r;
 	const bool request = fabsf(in->iq_request) > in->iq_request_min;
 
+	// Current the loop may actually drive: the ACIM limit, capped by the motor current limit
+	// (in->i_avail, 0 = not given). The flux target must fit inside it with room for some Iq,
+	// or i_mr never reaches the FLUXING exit threshold and the motor never makes torque.
+	const float imax = in->i_avail > 0.0f ? fminf(c->current_max, in->i_avail) : c->current_max;
+	const float id_mag = fminf(c->id_mag, 0.9f * imax);
+
 	if (!in->driven) {
 		s->state = ACIM_STATE_OFF;
 		s->t_state = 0.0f;
@@ -312,7 +318,7 @@ void acim_core_update(acim_core_t *s, const acim_core_conf_t *c,
 	}
 	s->t_state += dt;
 
-	if (s->state == ACIM_STATE_FLUXING && imr >= 0.9f * c->id_mag && s->t_state >= build_t) {
+	if (s->state == ACIM_STATE_FLUXING && imr >= 0.9f * id_mag && s->t_state >= build_t) {
 		s->state = ACIM_STATE_RUN;
 	}
 
@@ -370,18 +376,18 @@ void acim_core_update(acim_core_t *s, const acim_core_conf_t *c,
 	const float phase = theta;
 
 	// 5. Current references
-	float id_ref = c->id_mag;
+	float id_ref = id_mag;
 	float iq_ref = 0.0f;
 	s->iq_unclamped = 0.0f;
 	if (run_state) {
-		const float imr_eff = (c->sensorless && s->if_active) ? c->id_mag : imr;
+		const float imr_eff = (c->sensorless && s->if_active) ? id_mag : imr;
 		const float iq_slip_max = ACIM_TWO_PI * c->slip_max_hz * c->tau_r * imr_eff;
 		s->iq_unclamped = in->iq_request;
 		iq_ref = clampf(in->iq_request, iq_slip_max);
 
 		// Flux-collapse detector: torque wanted but flux far too low for it
 		if (fabsf(in->iq_request) > c->fault_slip_fac * iq_slip_max &&
-				fabsf(in->iq_request) > 0.2f * c->id_mag) {
+				fabsf(in->iq_request) > 0.2f * id_mag) {
 			s->slip_err_t += dt;
 		} else {
 			s->slip_err_t = 0.0f;
@@ -396,11 +402,10 @@ void acim_core_update(acim_core_t *s, const acim_core_conf_t *c,
 	if (c->sensorless && s->if_active && run_state) {
 		// I/f: one rotating current vector along the I/f angle. The cage follows it like
 		// an induction motor on a rotating field, which is self-damping.
-		id_ref = sqrtf(c->id_mag * c->id_mag + in->iq_request * in->iq_request);
+		id_ref = sqrtf(id_mag * id_mag + in->iq_request * in->iq_request);
 		iq_ref = 0.0f;
 	}
 
-	const float imax = c->current_max;
 	if (id_ref > imax) {
 		id_ref = imax;
 	}

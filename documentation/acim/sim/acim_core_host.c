@@ -8,6 +8,11 @@
 
 static acim_core_t S;
 static acim_core_conf_t C;
+static float I_AVAIL = 0.0f;
+
+void h_set_i_avail(float a) {
+	I_AVAIL = a;
+}
 
 void h_reset(void) {
 	acim_core_reset(&S);
@@ -47,6 +52,7 @@ void h_update(float dt, int driven, float ia, float ib, float va_prev, float vb_
 	in.enc_valid = enc_valid != 0;
 	in.iq_request = iq_request;
 	in.iq_request_min = iq_request_min;
+	in.i_avail = I_AVAIL;  // 0 = not limited (the default)
 	in.rs = rs;
 	in.sigma_ls = sigma_ls;
 

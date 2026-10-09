@@ -308,6 +308,8 @@ bool acim_isr_undriven(bool is_second_motor, const mc_configuration *conf, float
 	in.enc_phase = enc_phase;
 	in.enc_valid = enc_valid;
 	in.iq_request_min = ACIM_IQ_REQUEST_MIN;
+	// Same limit mcpwm_foc.c applies to id_set/iq_set after this
+	in.i_avail = fmaxf(fabsf(conf->lo_current_max), fabsf(conf->lo_current_min));
 	in.rs = rs;
 	in.sigma_ls = conf->foc_motor_l;
 
@@ -339,6 +341,8 @@ void acim_isr_driven(bool is_second_motor, const mc_configuration *conf, float d
 	in.enc_valid = enc_valid;
 	in.iq_request = iq_request;
 	in.iq_request_min = ACIM_IQ_REQUEST_MIN;
+	// Same limit mcpwm_foc.c applies to id_set/iq_set after this
+	in.i_avail = fmaxf(fabsf(conf->lo_current_max), fabsf(conf->lo_current_min));
 	in.rs = rs;
 	in.sigma_ls = conf->foc_motor_l;
 	m_va_now = v_alpha;

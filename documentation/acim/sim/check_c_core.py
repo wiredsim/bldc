@@ -31,6 +31,7 @@ def build():
     lib = ctypes.CDLL(LIB)
     f = ctypes.c_float
     lib.h_conf.argtypes = [ctypes.c_int] + [f] * 13
+    lib.h_set_i_avail.argtypes = [f]
     lib.h_update.argtypes = [f, ctypes.c_int, f, f, f, f, f, ctypes.c_int, f, f, f, f, ctypes.POINTER(f)]
     return lib
 
@@ -47,6 +48,8 @@ class CCoreController:
 
     def __init__(self, vc, ac):
         self.vc, self.ac = vc, ac
+        self.i_avail = getattr(ac, "i_avail", 0.0)
+        LIBC.h_set_i_avail(self.i_avail) if LIBC is not None else None
         self.dt = 1.0 / vc.fs
         LIBC.h_reset()
         LIBC.h_conf(1 if ac.speed_src == S.SRC_SENSORLESS else 0, ac.id_mag, ac.tau_r, ac.lm, ac.lr_lm,
@@ -73,6 +76,11 @@ class CCoreController:
         LIBC.h_update(dt, 1 if run_request else 0, ia, ib, va_prev, vb_prev, enc_th_e, 1,
                       iq_request, 1.0, vc.foc_motor_r, vc.foc_motor_l, r)
         phase, id_ref, iq_ref, fault, state = r[0], r[1], r[2], int(r[3]), int(r[4])
+        if self.i_avail > 0.0:
+            # mcpwm_foc.c truncates id_set to the current limit and iq_set to what is left
+            id_ref = max(-self.i_avail, min(self.i_avail, id_ref))
+            iq_lim = math.sqrt(max(self.i_avail ** 2 - id_ref ** 2, 0.0))
+            iq_ref = max(-iq_lim, min(iq_lim, iq_ref))
         imr, w_s, self.wr = r[5], r[6], r[7]
         self.imr_a, self.imr_b = r[13], r[14]
         self.if_active = r[12] > 0.5
@@ -201,6 +209,22 @@ def case_enc_lost(use_c):
     return "fault %s at %s" % (ctl.fault or "none", "%.3f s" % fault_t if fault_t else "-")
 
 
+
+def case_ilimit():
+    """Motor current limit below Id_mag (bench, 2026-10-09): with a 40 A limit and Id_mag 75 A
+    the motor never left FLUXING and made no torque. C core only (the Python controller has no
+    current limit)."""
+    mp = S.MotorParams()
+    vc = S.VescConf(mp)
+    ac = S.AcimConf()
+    ac.i_avail = 0.5 * ac.id_mag
+    log, ctl, _ = S.simulate(mp, vc, ac, 1.5, lambda t: 40.0 if t > 0.2 else 0.0, load=R.fan(), log_every=2)
+    t_run = next((t for t, st in zip(log["t"], log["state"]) if st == S.ST_RUN), None)
+    return "limit %.0f A (Id_mag %.0f A): %s, %.2f Nm at 1.0 to 1.5 s, max %.0f rpm, fault %s" % (
+        ac.i_avail, ac.id_mag, "RUN after %.0f ms" % (t_run * 1e3) if t_run else "never left FLUXING",
+        S.steady(log, "te", 1.0, 1.5), max(log["rpm"]), ctl.fault or "none")
+
+
 def main():
     global LIBC
     LIBC = build()
@@ -226,6 +250,7 @@ def main():
         lines.append("| %s | %s | %s |" % (name, py, cc))
         print(lines[-1], flush=True)
     lines.append("| E encoder signal lost at 1.0 s | %s | %s |" % (case_enc_lost(False), case_enc_lost(True)))
+    lines.append("| F current limit below Id_mag | - | %s |" % run(True, case_ilimit))
     print(lines[-1])
     lines.append("")
     lines.append("Case A columns: torque / flux angle error at the 150 A, 250 A and -150 A steps.")
