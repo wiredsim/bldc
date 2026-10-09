@@ -416,6 +416,20 @@ point; VESC estimate again 4.60 A). About **0.066 ohm**, half the first pack: ab
 100 A, above the cutback. Use this pack for high-current work. Longer pulls sag more as the
 cells polarise.
 
+Iq steps at Id_mag 75 A, tau_r 40 ms, second pack at 53.8 V, two runs each, 1000 to 4000 ERPM:
+
+| Iq (A) | Time (s) | Accel (rad/s^2) | vs 20 A | Slip (Hz) | Battery, VESC est. (A) |
+|---|---|---|---|---|---|
+| 10 | 0.862 | 91 | 0.46 | 0.3 | 3.3 |
+| 20 | 0.396 | 198 | 1.00 | 0.9 | 4.2 |
+| 40 | 0.201 | 391 | 1.97 | 1.9 | 6.8 |
+| 60 | 0.136 | 577 | 2.91 | 2.9 | 10.4 |
+
+Torque is linear in Iq to 60 A (3% roll-off at the top; the 10 A shortfall fits a few
+hundredths of a Nm of friction). The model gives about 0.045 Nm per A of Iq at 75 A flux,
+2.7 Nm at 60 A, but J came from the same model, so an absolute torque check (torque arm and
+scale) is still needed. No faults, FETs under 30 C.
+
 Not done yet: anything under load.
 
 ## Reporting back
