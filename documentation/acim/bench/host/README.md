@@ -10,7 +10,7 @@ time. Standard library only.
 | `vesc_mcconf.py` | Read or set any motor config field by its C name (`foc_dt_us`, `l_current_max`, ...). The byte layout is parsed from `confgenerator.c`, every other byte is sent back unchanged, and the write is read back and checked |
 | `vesc_acim_conf.py` | Read or set the ACIM page (custom config 0) |
 | `vesc_term.py "cmd"` | Run a terminal command (`acim_status`, `faults`, `measure_res 20`) |
-| `vesc_repl.py "(expr)"` | Evaluate LispBM. Replies are sometimes lost, and commands over about 512 bytes are dropped silently |
+| `vesc_repl.py "(expr)"` | Evaluate LispBM. After a `conf-set` the board spends about 3 s applying the config and silently drops REPL commands that arrive meanwhile; commands over about 512 bytes are also dropped silently |
 | `vesc_set.py name=value` | Set a LispBM `conf-set` value and read it back, retrying lost replies |
 | `vesc_stream.py file.lisp [secs] [done_regex]` | Stream a LispBM script (runs from RAM, flash untouched) and log its prints. `POLL_TERM=acim_status POLL_S=0.25` polls a terminal command while it runs |
 | `vesc_rl.py` | Measure R and L (the VESC Tool button) |

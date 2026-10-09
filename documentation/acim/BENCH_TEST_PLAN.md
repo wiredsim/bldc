@@ -303,6 +303,21 @@ off: report it with the numbers.
 
 Restore the settings after each test.
 
+The checks only run once the voltage-model speed (filtered) passes `sl_min_hz`, 50 Hz
+electrical (3000 ERPM) on this motor, so a 3 s spin at 5 A (about 700 ERPM) never reaches
+them. Run each fault test a second time at 10 A up to a speed past the threshold, with Max
+ERPM raised for that run, and run the same high-speed spin with the correct settings first.
+
+Bench result, 2026-10-09, firmware df41aff2, battery 52.6 V:
+
+| Test | Result |
+|---|---|
+| Baseline, correct settings, 10 A to 3510 ERPM | No fault. Checks active above 3000 ERPM for about 1.5 s |
+| Encoder Ratio 6 (true 4), 5 A, 3 s | No fault, no runaway; 2313 ERPM reported (about 1540 real). Below the check threshold |
+| Encoder Ratio 6, 10 A, up to reported 6000 ERPM | **ACIM_FLUX at 2905 ERPM reported**, about 0.7 s after the driven stator frequency reached 50 Hz. The rotor could not get past about 1930 real ERPM |
+| Encoder Inverted, 5 A, 3 s | Crawled backwards at about 20 ERPM, no fault (the known gap) |
+| Encoder unplugged | Not run yet |
+
 ## 10. Rotor time constant sweep (encoder mode)
 
 `accel_test.lisp` times the spin-up from 600 to 2400 ERPM at 15 A, three runs per setting.

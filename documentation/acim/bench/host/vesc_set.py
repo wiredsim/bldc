@@ -4,7 +4,7 @@
 Usage: vesc_set.py name=value [name=value ...]   e.g. l-current-max=40
 Exits non-zero if any value can't be verified.
 """
-import socket, sys, importlib.util, os
+import socket, sys, time, importlib.util, os
 spec = importlib.util.spec_from_file_location("r", os.path.join(os.path.dirname(os.path.abspath(__file__)), "vesc_repl.py"))
 r = importlib.util.module_from_spec(spec); spec.loader.exec_module(r)
 ok_all = True
@@ -14,7 +14,10 @@ for arg in sys.argv[1:]:
     want = float(val)
     for attempt in range(5):
         r.repl(f"(conf-set '{name} {want})", 2.0, s)
-        got = r.repl(f"(conf-get '{name})", 2.0, s)
+        # The board spends about 3 s applying the config after a conf-set and drops REPL
+        # commands that arrive meanwhile, so wait before reading back.
+        time.sleep(3.5)
+        got = r.repl(f"(conf-get '{name})", 3.0, s)
         try:
             if abs(float(got.replace("f32", "")) - want) < 1e-3 * max(1, abs(want)):
                 print(f"{name} = {got}"); break
