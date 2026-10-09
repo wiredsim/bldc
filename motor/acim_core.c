@@ -44,6 +44,7 @@
 #define ACIM_SLIP_ERR_TIME  0.2f
 #define ACIM_PLAUS_TIME     0.05f
 #define ACIM_HANDOVER_BLANK 0.25f
+#define ACIM_VM_GATE_TAU    0.05f  // s, filter on |vm_w| before it gates the plausibility checks
 
 #ifdef ACIM_HOST_TEST
 static void acim_sincos(float a, float *s, float *c) {
@@ -300,6 +301,7 @@ void acim_core_update(acim_core_t *s, const acim_core_conf_t *c,
 		s->ps_b = lm / c->lr_lm * s->imr_b;
 		s->ci_a = s->ci_b = 0.0f;
 		s->flux_err_t = s->slip_err_t = s->slip_plaus_t = 0.0f;
+		s->vm_w_gate = 0.0f;
 		return;
 	}
 
@@ -419,9 +421,13 @@ void acim_core_update(acim_core_t *s, const acim_core_conf_t *c,
 	s->w_s = w_s;
 
 	// 7. Flux plausibility: voltage model vs current model, once the stator frequency is
-	// high enough for the voltage model to carry information (both modes).
+	// high enough for the voltage model to carry information (both modes). The gate uses the
+	// voltage model's own speed because it must not depend on the encoder it checks (a lost
+	// encoder signal drops w_s too). It is low-passed: at low speed vm_w is noise with brief
+	// spikes past the threshold, which otherwise run these checks on a meaningless model.
 	s->t_handover += dt;
-	const bool vm_valid = fabsf(s->vm_w) > ACIM_TWO_PI * c->sl_min_hz &&
+	s->vm_w_gate += (fabsf(s->vm_w) - s->vm_w_gate) * fminf(1.0f, dt / ACIM_VM_GATE_TAU);
+	const bool vm_valid = s->vm_w_gate > ACIM_TWO_PI * c->sl_min_hz &&
 			s->t_handover > ACIM_HANDOVER_BLANK && !(c->sensorless && s->if_active);
 
 	if (vm_valid && run_state) {

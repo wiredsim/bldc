@@ -104,6 +104,7 @@ typedef struct {
 	float ci_a, ci_b;       // corrector integrators
 	float psr_vm_a, psr_vm_b;
 	float vm_th, vm_w, vm_w_int;
+	float vm_w_gate;        // |vm_w| low-passed, gates the voltage-model checks [rad/s]
 	float vm_th_raw, vm_th_raw_prev;
 	float w_sl_obs;
 

@@ -50,6 +50,10 @@ void acim_isr_driven(bool is_second_motor, const mc_configuration *conf, float d
 // Rotor electrical angle, fed to the speed PLL and tachometer so they report rotor speed
 float acim_rotor_phase(bool is_second_motor);
 
+// True when acim_rotor_phase() tracks the rotor: always with the encoder, and in sensorless
+// mode only while ACIM is driving. Otherwise use the normal FOC phase for speed estimation.
+bool acim_rotor_phase_valid(bool is_second_motor);
+
 // Current-controller feed-forward using the stator frequency and the rotor flux
 void acim_decoupling(bool is_second_motor, const mc_configuration *conf, float id, float iq,
 		float *dec_vd, float *dec_vq, float *dec_bemf);

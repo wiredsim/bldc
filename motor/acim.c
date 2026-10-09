@@ -370,6 +370,14 @@ float acim_rotor_phase(bool is_second_motor) {
 	return m_core.rotor_phase;
 }
 
+bool acim_rotor_phase_valid(bool is_second_motor) {
+	(void)is_second_motor;
+	// Sensorless and OFF: nothing observes the rotor, so the phase stands still. Reporting
+	// that as zero speed also pins the speed-dependent voltage filter in mcpwm_foc.c at its
+	// minimum, which attenuates and delays v_alpha/v_beta in open loop and measurements.
+	return !m_core_conf.sensorless || m_core.state != ACIM_STATE_OFF;
+}
+
 void acim_decoupling(bool is_second_motor, const mc_configuration *conf, float id, float iq,
 		float *dec_vd, float *dec_vq, float *dec_bemf) {
 	(void)is_second_motor;

@@ -3845,7 +3845,8 @@ void mcpwm_foc_adc_int_handler(void *p, uint32_t flags) {
 		break;
 	};
 
-	if (acim_active(is_second_motor)) {
+	const bool acim_rotor_speed = acim_active(is_second_motor) && acim_rotor_phase_valid(is_second_motor);
+	if (acim_rotor_speed) {
 		// Report rotor speed, not the stator (flux) frequency
 		phase_for_speed_est = acim_rotor_phase(is_second_motor);
 	}
@@ -3882,7 +3883,7 @@ void mcpwm_foc_adc_int_handler(void *p, uint32_t flags) {
 	FOC_PROFILE_LINE_FINE();
 
 	// Update tachometer (resolution = 60 deg as for BLDC)
-	float ph_tmp = acim_active(is_second_motor) ? phase_for_speed_est : state_now->phase;
+	float ph_tmp = acim_rotor_speed ? phase_for_speed_est : state_now->phase;
 	utils_norm_angle_rad(&ph_tmp);
 	int step = (int)floorf((ph_tmp + M_PI) / (2.0 * M_PI) * 6.0);
 	utils_truncate_number_int(&step, 0, 5);
