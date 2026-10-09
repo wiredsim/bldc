@@ -410,6 +410,12 @@ The pack sagged 0.86 V at 6 A (cells 3.716 to 3.653 V average): about **0.14 ohm
 that is about 8 V, which puts the pack at the 44.8 V start of the low-voltage cutback, so the
 battery's internal resistance, not its current rating, limits bench power.
 
+Second 14S pack (no BMS), same hold: rest 53.83 V before and 53.88 V after, 53.48 V under
+load (VESC readings, offset cancels), so 0.38 V of sag at about 5.8 A (same ~310 W operating
+point; VESC estimate again 4.60 A). About **0.066 ohm**, half the first pack: about 47 V at
+100 A, above the cutback. Use this pack for high-current work. Longer pulls sag more as the
+cells polarise.
+
 Not done yet: anything under load.
 
 ## Reporting back
