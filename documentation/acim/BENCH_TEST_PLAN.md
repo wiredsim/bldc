@@ -107,6 +107,13 @@ the field, so the raw ratio is a little high). 4 pole pairs gives 75 turns, 6 gi
 If the shaft stalls or jerks, raise `cur` by 10 A at a time. At low current this motor
 makes little torque until it is magnetized.
 
+Rounding down only works when slip is small, so the rotor must be properly magnetized. On
+the bench, 10 A gave 24 turns in 30 s (150 field turns), which rounds down to 6 pole pairs.
+The real answer was 4: the rotor was slipping 36%. The no-load test settled it, with the rotor
+running at 747 to 752 rpm against a 3000 ERPM field (750 rpm at 4 pole pairs) from 20 A up.
+Run this at the script's default 20 A or more, and if two candidate pole counts are both
+plausible, check with the no-load rotor speed.
+
 | Run | Current (A) | Shaft turns | 300 / turns | Pole pairs |
 |---|---|---|---|---|
 | 1 | | | | |
