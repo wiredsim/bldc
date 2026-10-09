@@ -446,6 +446,19 @@ First load test, a friction pad on the pulley (Id_mag 75 A, second pack):
 - A friction pad is fine for spot checks, not for steady power: a controllable load is
   needed, and flux reduction at light load is worth adding.
 
+Firmware 8f0739f1 (fixes 244af82d and 8f0739f1), 2026-10-09:
+- The "speed mode gives no Iq" issue above was ACIM stuck in FLUXING: the test had lowered
+  Motor Current Max to 40 A, below 1.1 x Id_mag, so i_mr never reached 0.9 x Id_mag. Fixed by
+  capping the flux target at 90% of the available current. Same test now: i_mr 36 A, RUN at
+  0.16 s, Iq tracks the speed loop's -8 to -12 A. VESC speed mode itself was fine.
+- Light-load flux reduction, `(acim-flux-opt 0.3)`, LispBM speed loop at -2000 ERPM under the
+  friction pad: off, i_mr 75.0 A / Iq -21.9 A (78 A total); on, i_mr 43.0 A / Iq -43.4 A
+  (61 A total, Id = Iq as designed) for 14% more torque as the pad tightened. About 39% less
+  copper loss. The VESC battery estimate (2.30 vs 2.15 A) is too coarse to show it, and the
+  third leg (off again) stalled at the 30 A clamp as the friction kept rising. Needs the BMS
+  pack and a steady load for a real efficiency number.
+- Reflashing reset both configs again; restore_bench_config.sh put everything back.
+
 Not done yet: steady load, absolute torque (torque arm), efficiency map.
 
 ## Reporting back
