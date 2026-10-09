@@ -399,6 +399,17 @@ Id_mag 75 A (half the ~150 A saturation point, see step 5): 5 A Iq reaches 5832 
 3 s (1194 at Id_mag 20 A); 20 A Iq gives about 240 rad/s^2, about 1.1 Nm with the 0.0046
 kg m^2 rotor, against 0.9 Nm predicted. No faults, FETs under 37 C.
 
+Battery current check against the ANT BMS (12 s open-loop hold, 120 A at 1500 rpm, no load):
+BMS 6.0 to 6.1 A at 51.15 to 51.19 V (307 to 312 W); VESC estimate 4.57 A at 51.7 V (236 W).
+**The VESC battery current reads about 25% low here**: the HI200 has no input current sensor,
+and the estimate (modulation x phase current) leaves out the inverter's own losses, about
+75 W at 120 A phase current. The VESC voltage reads about 0.4 to 0.5 V (1%) high, also at rest.
+Use the BMS for power and efficiency.
+
+The pack sagged 0.86 V at 6 A (cells 3.716 to 3.653 V average): about **0.14 ohm**. At 60 A
+that is about 8 V, which puts the pack at the 44.8 V start of the low-voltage cutback, so the
+battery's internal resistance, not its current rating, limits bench power.
+
 Not done yet: anything under load.
 
 ## Reporting back
