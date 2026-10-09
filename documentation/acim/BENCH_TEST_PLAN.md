@@ -37,7 +37,7 @@ Board settings that differ from stock 7.00 and why:
 | Current Kp / Ki | 0.0121 / 7.8 | L and R times 1000 rad/s |
 | Motor Poles | 8 | 4 pole pairs (step 4 note) |
 | Encoder Ratio | 4 | Pole pairs |
-| ACIM page | Id_mag 20 A, tau_r 45 ms, Lm 100 uH, Lr/Lm 1.06, Speed Source Encoder, sl_min_hz 100, sl_if_ramp 40 | Step 5 results; sl_min_hz see below |
+| ACIM page | Id_mag 20 A, tau_r 30 ms (step 10), Lm 100 uH, Lr/Lm 1.06, Speed Source Encoder, sl_min_hz 50, sl_if_ramp 40 | Step 5 and 10 results; sl_min_hz 50 since df41aff2 |
 
 Motor: Rs 7.8 mOhm, sigma*L 12.1 uH, Lm about 100 uH, Lr/Lm 1.06, tau_r about 45 ms cold,
 knee between 30 and 40 A, 4 pole pairs. The encoder hand check read 10.07 turns for 10, and
@@ -334,10 +334,19 @@ times mean nothing: lower `erpm-b` or `iq`.
 
 | tau_r (ms) | Run 1 (s) | Run 2 (s) | Run 3 (s) | i_mr (A) | Slip (Hz) |
 |---|---|---|---|---|---|
-| | | | | | |
-| | | | | | |
-| | | | | | |
-| | | | | | |
+| 22 | 1.296 | 1.318 | 1.306 | 20.0 | 3.8 to 4.2 |
+| 26 | 1.229 | 1.291 | 1.266 | 20.0 | 3.8 to 5.4 |
+| **30** | **1.212** | **1.227** | **1.214** | 20.0 | 3.1 to 4.0 |
+| 32 | 1.228 | 1.249 | 1.215 | 20.0 | 3.3 to 4.6 |
+| 35 | 1.247 | 1.257 | 1.232 | 20.0 | 2.8 to 4.2 |
+| 45 | 1.367 | 1.385 | 1.374 | 20.0 | 2.0 to 3.4 |
+| 63 | 1.760 | 1.788 | 1.737 | 20.0 | 1.7 to 2.4 |
+| 88 | 2.617 | 2.657 | 2.585 | 20.0 | 1.3 to 1.7 |
+
+Bench result, 2026-10-09, firmware df41aff2, Id_mag 20 A, Iq 15 A, Max ERPM 3500 for the
+sweep: **tau_r = 30 ms**, two thirds of the 45 ms from the step 5 decay. The optimum is
+shallow within about 15% and steep above it (88 ms takes twice as long). Input current
+stayed at 0.5 A, so the battery was not limiting.
 
 ## 11. Ramping up
 
