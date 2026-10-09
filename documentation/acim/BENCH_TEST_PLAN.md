@@ -184,9 +184,22 @@ Bench result, 2026-10-09, battery at 52.6 V:
 | 15 | 1010 | 33% | not valid, rotor fell behind | | | |
 | 10 | 371 | 75% | not valid | | | |
 
-Lm^2/Lr is about 95 uH up to 30 A and 11% lower at 40 A, so the knee is between 30 and 40 A.
-With Lr = Lm + half the Measure R and L inductance (18.1 / 2 = 9 uH), Lm is about 100 uH
-and Lr/Lm about 1.09. tau_r is about 45 ms cold, half the 100 ms default.
+Correction, 2026-10-09 (later): the 11% drop at 40 A was a fitting artefact, not a knee.
+`release_fit.py` used the whole decay, and the tail sits on what is left of the offset,
+which bends the fit and pulls V0 down. It now fits only down to 25% of the starting
+voltage. Refitted, and extended to 100 A with ACIM **disabled** (with ACIM enabled the
+release is not a release: ACIM holds the flux at its own Id_mag for flux_hold_time and
+trips ACIM_FLUX at speed):
+
+| I (A) | 20 | 30 | 40 | 60 | 80 | 100 |
+|---|---|---|---|---|---|---|
+| Lm^2/Lr (uH) | 96 to 106 | 104 | 106 to 112 | 106 | 96 | 101 |
+| psi_r (mWb) | 1.9 to 2.1 | 3.1 | 4.3 to 4.5 | 6.3 | 7.7 | 10.1 |
+| tau_r from the decay (ms) | 38 to 41 | 41 | 40 to 42 | 40 | 37 | 39 |
+
+**No saturation up to 100 A**: Lm^2/Lr is flat at about 100 uH within the scatter. Lm is
+about 106 uH, Lr/Lm about 1.06. The decay tau_r is about 40 ms at every current; the step 10
+spin-up sweep gives 30 ms, which is the value to run with.
 
 The original `no_load.lisp` procedure follows for reference.
 

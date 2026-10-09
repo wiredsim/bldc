@@ -31,7 +31,10 @@ for p in pts:
         t.append((k + win / 2) * p["dt"]); y.append(v2)
     # fit ln(V^2) vs t over the part well above the noise floor
     noise = max(0.02 * rest, 1e-4)
-    use = [(ti, math.log(yi)) for ti, yi in zip(t, y) if yi > 10 * noise]
+    # Fit the first part of the decay only (down to 25% of the starting voltage): the tail sits
+    # on what is left of the offset and bends the line, which pulls the intercept (V0) down.
+    v2_first = y[0] if y else 0.0
+    use = [(ti, math.log(yi)) for ti, yi in zip(t, y) if yi > max(10 * noise, 0.0625 * v2_first)]
     use = use[: next((i for i in range(1, len(use)) if use[i][1] > use[i-1][1] + 0.5), len(use))]
     i_meas = math.hypot(p["id"], p["iq"])
     if len(use) >= 3:
