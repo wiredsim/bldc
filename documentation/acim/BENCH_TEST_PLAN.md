@@ -316,7 +316,7 @@ Bench result, 2026-10-09, firmware df41aff2, battery 52.6 V:
 | Encoder Ratio 6 (true 4), 5 A, 3 s | No fault, no runaway; 2313 ERPM reported (about 1540 real). Below the check threshold |
 | Encoder Ratio 6, 10 A, up to reported 6000 ERPM | **ACIM_FLUX at 2905 ERPM reported**, about 0.7 s after the driven stator frequency reached 50 Hz. The rotor could not get past about 1930 real ERPM |
 | Encoder Inverted, 5 A, 3 s | Crawled backwards at about 20 ERPM, no fault (the known gap) |
-| Encoder unplugged | Not run yet |
+| Encoder unplugged (power off, unplug, power on), 5 A, 3 s | No fault, no runaway. Speed reads 0, so the field only turns at the commanded slip, about 1 Hz electrical; the shaft crept about 120 degrees in 3 s. **Not detected**: below `sl_min_hz` a missing encoder looks like a stalled rotor, and ABI gives no signal-present indication. Run `acim_enc_check` after any work on the encoder wiring |
 
 ## 10. Rotor time constant sweep (encoder mode)
 
