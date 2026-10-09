@@ -23,7 +23,7 @@ not run on real hardware.
 
 ## Bench status, 2026-10-09
 
-**ACIM runs in encoder mode**: from standstill to about 680 ERPM in 3 s at 5 A torque, both
+**ACIM runs in encoder mode** (steps 1 to 11 done, see each section): from standstill to about 680 ERPM in 3 s at 5 A torque, both
 directions, flux held at 20 A, clean FLUXING > RUN > HOLD > OFF, no faults. Sensorless mode
 starts (I/f) but cannot hand over to the observer at bench speeds; see below.
 
@@ -354,6 +354,16 @@ Only after steps 6 to 10 pass. In this order, one at a time: raise Max ERPM, ACI
 Limit and Motor Current Max; then move from the bench supply to the 48 V battery, set the
 voltage limits and battery cutoffs back to 48 V values, and put Battery Current Min back
 to a real regen limit. Re-run `first_spin.lisp` after each change.
+
+Bench result, 2026-10-09, firmware df41aff2, 14S battery at 52.6 V, no load on the shaft:
+
+| Change | Test | Result |
+|---|---|---|
+| Max ERPM 3000 to 6000 | 5 A, 3 s; 10 A to 4500 ERPM | 1194 ERPM; 4497 ERPM in 5.7 s. No faults |
+| Motor Current Max 60 A, Absolute Max 90 A, Battery Current Max 60 A, ACIM Current Limit 60 A | 5 A, 3 s; 30 A to 4500 ERPM | 0 to 4607 ERPM in 1.8 s at Iq 30 A. Slip sat at the 8 Hz `slip_max` clamp (30 A / (2 pi x 30 ms x 20 A) = 8 Hz): above about 30 A of Iq, raise Id_mag towards the knee (30 to 35 A) or slip_max |
+| Battery Current Min -20 A, Motor Current Max Brake -20 A | +20 A to 4000 ERPM, then -20 A to 500 ERPM | Braked in 1.16 s, battery current -0.4 A peak (about 24 W of braking power at 1000 rpm, as expected with only the rotor inertia). No faults |
+
+Not done yet: Id_mag above 20 A, and anything under load.
 
 ## Reporting back
 
