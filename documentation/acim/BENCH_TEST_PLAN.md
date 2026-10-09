@@ -25,23 +25,23 @@ not run on real hardware.
 
 - **Clamp the motor**, take the belt off and guard the pulley. Everything here runs at no
   load. Keep a hand on the supply switch.
-- **The bench supply cannot absorb regen.** An induction motor does not generate once it
-  is unpowered (no magnets, and the flux dies within a few tau_r), so cutting the power is
-  always safe. Regen only happens while the controller is braking. Keep it small:
-  - Motor > General > Current: **Battery Current Min (regen) = -1 A**. Battery Current Max
-    at or below what the supply delivers.
-  - Motor > General > Voltage: **Maximum Input Voltage = 26 V**. An overvoltage fault cuts
-    the PWM, which is safe on this motor.
-  - In sensorless mode the I/f start slows the field to zero when the request ends, which
-    drags the rotor down. The input current limit does not cover that, so keep those
-    speeds low (the scripts do). A 48 V battery instead of the supply removes the problem.
+- **Power: the 14S Li-ion pack (58.8 V full, 42 V empty) is the bench baseline.** A bench
+  supply cannot absorb regen; the battery can, within its BMS charge limit. An induction
+  motor does not generate once it is unpowered (no magnets, and the flux dies within a few
+  tau_r), so cutting the power is always safe. Regen only happens while the controller is
+  braking. Baseline settings (Motor > General):
+  - Current: **Battery Current Max = 20 A, Battery Current Min (regen) = -5 A**.
+  - Voltage: **Maximum Input Voltage = 60 V** (just above full charge), **Battery Voltage
+    Cutoff Start / End = 44.8 / 42.0 V** (3.2 / 3.0 V per cell).
+  - If you ever go back to a bench supply: regen -1 A and Maximum Input Voltage a few volts
+    above the supply, since an overvoltage fault is the only thing protecting it.
 - **Speed limit**: Motor > General > RPM: **Max ERPM = 3000, Min ERPM = -3000** for steps 6
-  to 9. ERPM is electrical: 3000 ERPM is 500 rpm at 6 pole pairs.
+  to 9. ERPM is electrical: 3000 ERPM is 750 rpm at the motor's 4 pole pairs. VESC tapers the
+  current from 80% of Max ERPM to zero at 100%, so a test that runs at a fixed ERPM needs
+  the cap at least 25% above it.
 - **Current**: Motor Current Max 60 A and Motor Current Max Brake -20 A for steps 4 and 5.
   Leave Absolute Maximum Current at the default. The ACIM page has its own current limit
   on top of these (ACIM Current Limit, default 40 A).
-- Check that the battery voltage cutoffs (Motor > General > Voltage) are below 20.5 V;
-  a 48 V setup has them far above it, and they would cut the current.
 
 ## 1. Back up, then flash
 
@@ -121,6 +121,35 @@ plausible, check with the no-load rotor speed.
 Enter the result as Motor Poles (= 2 x pole pairs) under Motor > Additional Info.
 
 ## 5. Magnetizing curve and tau_r (no encoder)
+
+**Use `release_curve.lisp` on the 100_250 hardware, not part 1 of `no_load.lisp`.** On the
+bench, part 1 read about 0.1 V where the real stator voltage was 2 to 3 V: while driving,
+`get-vd`/`get-vq` are reported after dead-time compensation, which at 5% duty is as large as
+the signal. So every L came out 0. The release voltage is measured directly and works.
+
+`release_curve.lisp` ramps to 6000 ERPM at 30 A, then at each current holds the field,
+releases, and dumps 400 ms of |V|^2 samples. `release_fit.py <log>` averages |V|^2 over each
+electrical cycle and subtracts the at-rest value. That removes the 0.33 V measurement offset
+exactly, because the cross term between a rotating vector and a fixed one averages to zero
+over a cycle. It then fits the decay for tau_r and gets Lm^2/Lr from the voltage at release
+(V0 = w_rotor * Lm^2/Lr * I). Max ERPM must be 8000 for this run. Only points where the rotor
+holds near synchronous speed are valid; below about 20 A at 6000 ERPM it falls behind.
+
+Bench result, 2026-10-09, battery at 52.6 V:
+
+| I (A) | rotor (rpm) | slip | V0 (V) | Lm^2/Lr (uH) | psi_r (mWb) | tau_r (ms) |
+|---|---|---|---|---|---|---|
+| 40 | 1496 | 0.3% | 2.198 | 87.7 | 3.51 | 51.1 |
+| 30 | 1496 | 0.2% | 1.852 | 98.5 | 2.95 | 44.2 |
+| 20 | 1478 | 1.4% | 1.172 | 94.6 | 1.89 | 44.3 |
+| 15 | 1010 | 33% | not valid, rotor fell behind | | | |
+| 10 | 371 | 75% | not valid | | | |
+
+Lm^2/Lr is about 95 uH up to 30 A and 11% lower at 40 A, so the knee is between 30 and 40 A.
+With Lr = Lm + half the Measure R and L inductance (18.1 / 2 = 9 uH), Lm is about 100 uH
+and Lr/Lm about 1.09. tau_r is about 45 ms cold, half the 100 ms default.
+
+The original `no_load.lisp` procedure follows for reference.
 
 Run `no_load.lisp`. It spins the motor open-loop at 6000 ERPM (100 Hz electrical, about
 1000 rpm at 6 pole pairs), steps the current from 60 A down to 10 A, and then lets go and
