@@ -21,6 +21,45 @@ not run on real hardware.
 | `first_spin.lisp` | 6, 7, 9: short ACIM runs with a printout | on |
 | `accel_test.lisp` | 10: rotor time constant sweep | on, encoder |
 
+## Bench status, 2026-10-09
+
+**ACIM runs in encoder mode**: from standstill to about 680 ERPM in 3 s at 5 A torque, both
+directions, flux held at 20 A, clean FLUXING > RUN > HOLD > OFF, no faults. Sensorless mode
+starts (I/f) but cannot hand over to the observer at bench speeds; see below.
+
+Board settings that differ from stock 7.00 and why:
+
+| Setting | Value | Why |
+|---|---|---|
+| FOC phase filters | **off** | The HI200 runs the 100_250 hwconf but has no switchable phase filters. With them on, VESC reads the phase voltage at the PWM midpoint, about 0 V, so vd/vq, Measure R and L and the ACIM voltage model all saw a fraction of the real voltage |
+| Dead-time compensation | **0.53 us** (stock 0.12) | Fitted from `measure_res` at 5 to 30 A: V = R*I + V0, with V0 driven to about 0 at working currents |
+| Motor R / L / Ld-Lq | 7.8 mOhm / 12.1 uH / 0.59 uH | Re-measured after the two fixes above (earlier 36 mOhm / 18.1 uH were wrong) |
+| Current Kp / Ki | 0.0121 / 7.8 | L and R times 1000 rad/s |
+| Motor Poles | 8 | 4 pole pairs (step 4 note) |
+| Encoder Ratio | 4 | Pole pairs |
+| ACIM page | Id_mag 20 A, tau_r 45 ms, Lm 100 uH, Lr/Lm 1.06, Speed Source Encoder, sl_min_hz 100, sl_if_ramp 40 | Step 5 results; sl_min_hz see below |
+
+Motor: Rs 7.8 mOhm, sigma*L 12.1 uH, Lm about 100 uH, Lr/Lm 1.06, tau_r about 45 ms cold,
+knee between 30 and 40 A, 4 pole pairs. The encoder hand check read 10.07 turns for 10, and
+`acim_enc_check` passed (rotor/field 0.88 forward and reverse at 120 ERPM, friction slip).
+
+Known issues, not yet fixed in firmware:
+
+1. **The voltage model is too weak at low speed on this motor.** At 20 A the stator voltage is
+   under 1 V below about 60 Hz electrical, and the dead-time error left after compensation is
+   0.05 to 0.3 V. The voltage-model flux read 1.6 mWb at 20 Hz falling to 0.4 mWb at 50 Hz
+   (true value about 2 mWb), so the sensorless handover fails and falls back to I/f.
+2. **The voltage-model checks are gated by the voltage model's own speed** (`vm_valid` uses
+   `vm_w`). When that estimate spikes, the ACIM_FLUX and encoder slip-plausibility checks run
+   on garbage and trip falsely; in encoder mode this gave an ACIM_SLIP at 554 ERPM. The gate
+   should use the trusted stator frequency (`w_s`, encoder speed plus commanded slip). Until
+   then, **sl_min_hz = 100** keeps the checks off below 6000 ERPM, which also means the step 9
+   encoder fault checks will not trip at bench speeds.
+3. **With ACIM enabled but not driving (open loop, measurements), VESC's speed estimate reads
+   0**, because `phase_for_speed_est` is the ACIM rotor phase, which only moves in RUN. The
+   speed-dependent voltage filter then sits at its minimum (filter_const 0.01), so vd/vq lag
+   and shrink with frequency. Fall back to the normal phase when ACIM is not in RUN.
+
 ## 0. Safety and the bench
 
 - **Clamp the motor**, take the belt off and guard the pulley. Everything here runs at no
