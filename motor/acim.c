@@ -62,6 +62,8 @@ static acim_core_conf_t m_core_conf;
 // Light-load flux reduction floor (fraction of Id_mag), 0 = off. From the ACIM page; LispBM
 // (acim-flux-opt x) overrides it until the next config write.
 static float m_flux_opt = 0.0;
+// Power estimate delay compensation [control periods], 0 = stock; LispBM (acim-pdelay x)
+static float m_power_delay = 0.0;
 static acim_core_t m_core;
 static volatile bool m_active = false;
 static volatile bool m_fault_sent = false;
@@ -385,6 +387,10 @@ float acim_inverter_loss_current(bool is_second_motor, float i_abs, float v_bus)
 	return 1.5 * (m_conf.inv_loss_r * i * i + m_conf.inv_loss_v * i) / v_bus;
 }
 
+float acim_power_delay_periods(bool is_second_motor) {
+	return is_second_motor ? 0.0 : m_power_delay;
+}
+
 float acim_rotor_phase(bool is_second_motor) {
 	(void)is_second_motor;
 	return m_core.rotor_phase;
@@ -705,6 +711,23 @@ static lbm_value ext_acim_flux_opt(lbm_value *args, lbm_uint argn) {
 	return lbm_enc_float(m_flux_opt);
 }
 
+// (acim-pdelay) returns, (acim-pdelay x) sets the power estimate delay in control periods
+static lbm_value ext_acim_pdelay(lbm_value *args, lbm_uint argn) {
+	if (argn == 1 && lbm_is_number(args[0])) {
+		float d = lbm_dec_as_float(args[0]);
+		if (d < -2.0) {
+			d = -2.0;
+		}
+		if (d > 3.0) {
+			d = 3.0;
+		}
+		m_power_delay = d;
+	} else if (argn != 0) {
+		return ENC_SYM_TERROR;
+	}
+	return lbm_enc_float(m_power_delay);
+}
+
 static void load_extensions(bool main_found) {
 	if (!main_found) {
 		lbm_add_extension("acim-flux", ext_acim_flux);
@@ -712,6 +735,7 @@ static void load_extensions(bool main_found) {
 		lbm_add_extension("acim-state", ext_acim_state);
 		lbm_add_extension("acim-wr", ext_acim_wr);
 		lbm_add_extension("acim-flux-opt", ext_acim_flux_opt);
+		lbm_add_extension("acim-pdelay", ext_acim_pdelay);
 	}
 }
 #endif

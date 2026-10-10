@@ -58,6 +58,10 @@ bool acim_rotor_phase_valid(bool is_second_motor);
 // and V from the ACIM page. 0 when ACIM is inactive or both are 0.
 float acim_inverter_loss_current(bool is_second_motor, float i_abs, float v_bus);
 
+// Delay between the modulation and the current sample used for the battery power estimate, in
+// control periods. 0 = stock estimate. Runtime only, (acim-pdelay x) in LispBM.
+float acim_power_delay_periods(bool is_second_motor);
+
 // Current-controller feed-forward using the stator frequency and the rotor flux
 void acim_decoupling(bool is_second_motor, const mc_configuration *conf, float id, float iq,
 		float *dec_vd, float *dec_vq, float *dec_bemf);

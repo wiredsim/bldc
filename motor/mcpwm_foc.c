@@ -4759,7 +4759,25 @@ static void control_current(motor_all_state_t *motor, float dt) {
 #ifdef HW_HAS_INPUT_CURRENT_SENSOR
 	state_m->i_bus = GET_INPUT_CURRENT();
 #else
-	state_m->i_bus = state_m->mod_alpha_measured * state_m->i_alpha + state_m->mod_beta_measured * state_m->i_beta;
+	{
+		float mod_a = state_m->mod_alpha_measured;
+		float mod_b = state_m->mod_beta_measured;
+		if (acim_active(motor != &m_motor_1)) {
+			// The modulation and the current sample are not from the same instant: rotate the
+			// voltage back by the frame speed times the delay before taking the power. At no
+			// load an induction motor is almost purely reactive, so a small angle error is a
+			// large error in the estimated battery power.
+			const float delay = acim_power_delay_periods(motor != &m_motor_1);
+			if (delay != 0.0) {
+				float ds, dc;
+				utils_fast_sincos_better(-motor->m_speed_est_fast_corrected * dt * delay, &ds, &dc);
+				const float ma = dc * mod_a - ds * mod_b;
+				mod_b = ds * mod_a + dc * mod_b;
+				mod_a = ma;
+			}
+		}
+		state_m->i_bus = mod_a * state_m->i_alpha + mod_b * state_m->i_beta;
+	}
 	// TODO: Also calculate motor power based on v_alpha, v_beta, i_alpha and i_beta. This is much more accurate
 	// with phase filters than using the modulation and bus current.
 #endif
