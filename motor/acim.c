@@ -62,8 +62,10 @@ static acim_core_conf_t m_core_conf;
 // Light-load flux reduction floor (fraction of Id_mag), 0 = off. From the ACIM page; LispBM
 // (acim-flux-opt x) overrides it until the next config write.
 static float m_flux_opt = 0.0;
-// Power estimate delay compensation [control periods], 0 = stock; LispBM (acim-pdelay x)
-static float m_power_delay = 0.0;
+// Power estimate delay compensation [control periods]; LispBM (acim-pdelay x), 0 = stock.
+// 1.4 calibrated against the ANT BMS on the HI200 bench (2026-10-10): 120 A no load, error
+// down from -14% / -21% to -6% / -2% at 500 / 1150 rpm.
+static float m_power_delay = 1.4;
 static acim_core_t m_core;
 static volatile bool m_active = false;
 static volatile bool m_fault_sent = false;

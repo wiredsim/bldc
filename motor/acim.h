@@ -59,7 +59,7 @@ bool acim_rotor_phase_valid(bool is_second_motor);
 float acim_inverter_loss_current(bool is_second_motor, float i_abs, float v_bus);
 
 // Delay between the modulation and the current sample used for the battery power estimate, in
-// control periods. 0 = stock estimate. Runtime only, (acim-pdelay x) in LispBM.
+// control periods. Default 1.4 (bench calibration), 0 = stock estimate; (acim-pdelay x) in LispBM.
 float acim_power_delay_periods(bool is_second_motor);
 
 // Current-controller feed-forward using the stator frequency and the rotor flux

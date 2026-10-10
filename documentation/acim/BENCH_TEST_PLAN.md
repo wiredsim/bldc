@@ -485,6 +485,23 @@ than setting Encoder Inverted, so the config defaults in the 100_250_hi200_bsg t
 valid. Check passed twice (0.89 / 0.88); 5 A ACIM spin to 3862 ERPM in 3 s, no faults.
 **After any rewiring: keep ACIM disabled until acim_enc_check passes.**
 
+Battery current calibration against the ANT BMS, 2026-10-10 (open loop, no load, ACIM on):
+- 120 A at 500 / 900 / 1150 rpm: the VESC estimate was 30 / 47 / 61 W low, growing with speed.
+  Real inverter losses depend on current, not speed. At no load the motor is almost purely
+  reactive, and the modulation used for the power product is not from the same instant as the
+  sampled current, so the angle error times the large reactive V and I is a large power error.
+- Firmware ae3b9daf rotates the modulation back by frame speed x dt x delay. Stepping the delay
+  at 1150 rpm moved the estimate 3.83 / 4.20 / 4.52 / 4.88 / 5.20 A for 0 / 0.5 / 1 / 1.5 / 2
+  periods against a steady BMS 4.9 A. Using both speeds: **delay 1.4 periods**, leaving about
+  0.1 A (6 W) of real inverter loss at 120 A.
+- Check at delay 1.4: 500 rpm 3.56 A vs BMS 3.80 A (-6%, was -14%); 1150 rpm 4.77 vs 4.85 A
+  (-2%, was -21%). 1.4 is now the default. The R/V loss model stays at 0: what is left is close
+  to the BMS's 0.1 A resolution.
+- Current sweep at 900 rpm (40 to 150 A) and the FET heating: up to 75 to 80 C after a minute at
+  120 to 150 A from 40 C. The VESC derates from 85 C; keep runs short or add cooling.
+- The noise heard at 120 A: a ~1.2 kHz structural mode excited by 6k-order inverter harmonics
+  (12x electrical at 1500 rpm, 18x at 1000 rpm), loud only when a hold parks a harmonic on it.
+
 Not done yet: steady load, absolute torque (torque arm), efficiency map.
 
 ## Reporting back
