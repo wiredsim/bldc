@@ -478,6 +478,13 @@ update, and the emulated EEPROM is sectors 1-2. Flash the `100_250_hi200_bsg` ta
 motor config values read back at the bench settings straight after the flash, with nothing
 restored. The ACIM page still resets to disabled; run restore_bench_config.sh.
 
+Motor re-terminated, 2026-10-10: Measure R and L 7.34 mOhm / 11.30 uH (was 7.31 / 12.07),
+config left as is. The new hookup had two phases swapped: `acim_enc_check` reported "Encoder
+direction is reversed" both ways (ACIM was kept disabled). Two phase wires swapped back rather
+than setting Encoder Inverted, so the config defaults in the 100_250_hi200_bsg target stay
+valid. Check passed twice (0.89 / 0.88); 5 A ACIM spin to 3862 ERPM in 3 s, no faults.
+**After any rewiring: keep ACIM disabled until acim_enc_check passes.**
+
 Not done yet: steady load, absolute torque (torque arm), efficiency map.
 
 ## Reporting back
