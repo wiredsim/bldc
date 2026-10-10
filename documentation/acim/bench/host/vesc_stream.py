@@ -38,6 +38,25 @@ def pump(timeout, want=None):
                 if done_re.search(m) and want is None: return "done"
     return None
 
+def fault_log():
+    """Fault entries logged since boot, from the terminal 'faults' command."""
+    s.sendall(v.pack(bytes([20]) + b"faults"))
+    out, end = [], time.time() + 2.0
+    while time.time() < end:
+        s.settimeout(0.2)
+        try: c = s.recv(65536)
+        except socket.timeout:
+            if out: break
+            continue
+        buf.extend(c)
+        for p in v.unpack_all(buf):
+            if p[0] == 21: out.append(p[1:].decode(errors="replace"))
+    text = "\n".join(out)
+    # one entry per "Fault            : FAULT_CODE_..." header, up to the next one
+    parts = re.split(r"(?=Fault\s+:\s*FAULT_CODE_)", text)
+    return [x for x in parts if x.startswith("Fault")]
+
+faults_before = len(fault_log())
 off, CH = 0, 400
 while off < len(code):
     chunk = code[off:off + CH]
@@ -58,4 +77,8 @@ while time.time() < end:
         pump(1.5)
         break
 s.sendall(v.pack(bytes([REPL]) + b"(set-current 0)"))
-log("host: done")
+time.sleep(0.5)
+new = fault_log()[faults_before:]
+for blk in new:
+    log("NEW FAULT LOGGED:\n" + blk.strip())
+log("host: done" + ("" if not new else "  (%d new fault(s) in the log)" % len(new)))

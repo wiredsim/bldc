@@ -459,6 +459,19 @@ Firmware 8f0739f1 (fixes 244af82d and 8f0739f1), 2026-10-09:
   pack and a steady load for a real efficiency number.
 - Reflashing reset both configs again; restore_bench_config.sh put everything back.
 
+Resonance hunt, 2026-10-10 (open-loop sweeps 0 to 1500 rpm over 60 s, MacBook microphone):
+at 30 A no resonance; at 120 A the noise is 11 to 16 dB louder up to 1100 rpm and dominated
+by rotation orders, mostly 24x rotation (6x electrical: dead-time and/or slot harmonics).
+Amplified at about 860 rpm (345 Hz) and in a fixed 1050 to 1200 Hz band. The sound heard
+earlier did not come back; the mounting had changed since.
+
+**The 120 A sweep ended in ABS_OVER_CURRENT** (-262 A instantaneous, 71 A filtered, 6196 ERPM,
+FETs 63 C), at the release. With ACIM disabled, `(set-current 0)` hands an open-loop drive at
+speed to the PMSM current controller (observer angle, PMSM flux feed-forward) for the few ms
+before the motor is released, on a magnetized, spinning induction motor. End open-loop runs
+with `(foc-openloop 0.0 <erpm>)` instead, which brings the current to zero in the same frame,
+and check the fault log after every run: `vesc_stream.py` now prints any new entries.
+
 Not done yet: steady load, absolute torque (torque arm), efficiency map.
 
 ## Reporting back
