@@ -1,4 +1,7 @@
 CSRC += \
+	motor/acim.c \
+	motor/acim_core.c \
+	motor/acim_confgen.c \
 	motor/foc_math.c \
 	motor/mc_interface.c \
 	motor/mcpwm.c \
