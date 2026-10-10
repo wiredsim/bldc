@@ -59,8 +59,8 @@ _Static_assert(ACIM_CONF_WORDS + 1 <= EEPROM_VARS_HW, "ACIM config does not fit 
 // Private variables
 static acim_config m_conf;
 static acim_core_conf_t m_core_conf;
-// Light-load flux reduction floor (fraction of Id_mag), 0 = off. Runtime only, set from
-// LispBM with (acim-flux-opt x); not on the ACIM page yet.
+// Light-load flux reduction floor (fraction of Id_mag), 0 = off. From the ACIM page; LispBM
+// (acim-flux-opt x) overrides it until the next config write.
 static float m_flux_opt = 0.0;
 static acim_core_t m_core;
 static volatile bool m_active = false;
@@ -211,6 +211,9 @@ static void conf_apply(const acim_config *conf) {
 	c.obs_bw = clamp_range(c.obs_bw, 0.1, 50.0);
 	c.fault_flux_err = clamp_range(c.fault_flux_err, 0.05, 5.0);
 	c.fault_slip_fac = clamp_range(c.fault_slip_fac, 1.0, 100.0);
+	c.flux_opt = clamp_range(c.flux_opt, 0.0, 1.0);
+	c.inv_loss_r = clamp_range(c.inv_loss_r, 0.0, 0.1);
+	c.inv_loss_v = clamp_range(c.inv_loss_v, 0.0, 5.0);
 	if (c.speed_src > ACIM_SPEED_SRC_SENSORLESS) {
 		c.speed_src = ACIM_SPEED_SRC_ENCODER;
 	}
@@ -230,6 +233,7 @@ static void conf_apply(const acim_config *conf) {
 	cc.obs_bw = c.obs_bw;
 	cc.fault_flux_err = c.fault_flux_err;
 	cc.fault_slip_fac = c.fault_slip_fac;
+	m_flux_opt = c.flux_opt;
 	cc.id_min_frac = m_flux_opt;
 
 	utils_sys_lock_cnt();
@@ -371,6 +375,14 @@ void acim_isr_driven(bool is_second_motor, const mc_configuration *conf, float d
 		*id_set = out.id_ref;
 		*iq_set = out.iq_ref;
 	}
+}
+
+float acim_inverter_loss_current(bool is_second_motor, float i_abs, float v_bus) {
+	if (is_second_motor || !m_active || v_bus < 1.0) {
+		return 0.0;
+	}
+	const float i = fabsf(i_abs);
+	return 1.5 * (m_conf.inv_loss_r * i * i + m_conf.inv_loss_v * i) / v_bus;
 }
 
 float acim_rotor_phase(bool is_second_motor) {
@@ -522,6 +534,10 @@ static void terminal_status(int argc, const char **argv) {
 	commands_printf("Config: Id_mag %.1f A, tau_r %.1f ms, Lm %.1f uH, Lr/Lm %.3f, I_max %.1f A, slip_max %.1f Hz",
 			(double)m_conf.id_mag, (double)(m_conf.tau_r * 1e3), (double)(m_conf.lm * 1e6),
 			(double)m_conf.lr_lm, (double)m_conf.current_max, (double)m_conf.slip_max);
+	if (m_conf.inv_loss_r > 0.0 || m_conf.inv_loss_v > 0.0) {
+		commands_printf("Inverter loss model: R %.2f mOhm, V %.3f V",
+				(double)(m_conf.inv_loss_r * 1e3), (double)m_conf.inv_loss_v);
+	}
 	if (m_flux_opt > 0.0) {
 		commands_printf("Light-load flux reduction: floor %.2f x Id_mag, Id target now %.1f A",
 				(double)m_flux_opt, (double)m_core.id_dyn);

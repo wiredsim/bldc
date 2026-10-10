@@ -25,8 +25,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define ACIM_CONF_SIGNATURE		1537242337u
-#define ACIM_CONF_XML_SIZE		2382
+#define ACIM_CONF_SIGNATURE		1368515497u
+#define ACIM_CONF_XML_SIZE		2932
 
 typedef enum {
 	ACIM_SPEED_SRC_ENCODER,
@@ -49,6 +49,9 @@ typedef struct {
 	float obs_bw;
 	float fault_flux_err;
 	float fault_slip_fac;
+	float flux_opt;
+	float inv_loss_r;
+	float inv_loss_v;
 } acim_config;
 
 extern const uint8_t acim_conf_xml[ACIM_CONF_XML_SIZE];

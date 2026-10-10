@@ -1118,6 +1118,21 @@ void mcpwm_foc_set_current_off_delay(float delay_sec) {
 	}
 }
 
+// Battery current: without an input current sensor i_bus is the power delivered to the motor
+// only. With ACIM active, add its inverter loss model (0 unless configured on the ACIM page).
+static float i_bus_with_loss(volatile motor_all_state_t *motor) {
+	const bool is_second_motor = motor != &m_motor_1;
+	float i_bus = motor->m_motor_state.i_bus;
+#ifndef HW_HAS_INPUT_CURRENT_SENSOR
+	if (acim_active(is_second_motor)) {
+		i_bus += acim_inverter_loss_current(is_second_motor, motor->m_motor_state.i_abs, motor->m_motor_state.v_bus);
+	}
+#else
+	(void)is_second_motor;
+#endif
+	return i_bus;
+}
+
 float mcpwm_foc_get_tot_current_motor(bool is_second_motor) {
 	volatile motor_all_state_t *motor = M_MOTOR(is_second_motor);
 	return SIGN(motor->m_motor_state.i_bus) * motor->m_motor_state.i_abs;
@@ -1129,12 +1144,12 @@ float mcpwm_foc_get_tot_current_filtered_motor(bool is_second_motor) {
 }
 
 float mcpwm_foc_get_tot_current_in_motor(bool is_second_motor) {
-	return M_MOTOR(is_second_motor)->m_motor_state.i_bus;
+	return i_bus_with_loss(M_MOTOR(is_second_motor));
 }
 
 float mcpwm_foc_get_tot_current_in_filtered_motor(bool is_second_motor) {
 	// TODO: Filter current?
-	return M_MOTOR(is_second_motor)->m_motor_state.i_bus;
+	return i_bus_with_loss(M_MOTOR(is_second_motor));
 }
 
 float mcpwm_foc_get_abs_motor_current_motor(bool is_second_motor) {
@@ -1331,7 +1346,7 @@ float mcpwm_foc_get_iq_filter(void) {
  * The input current.
  */
 float mcpwm_foc_get_tot_current_in(void) {
-	return get_motor_now()->m_motor_state.i_bus;
+	return i_bus_with_loss(get_motor_now());
 }
 
 /**
@@ -1341,7 +1356,7 @@ float mcpwm_foc_get_tot_current_in(void) {
  * The filtered input current.
  */
 float mcpwm_foc_get_tot_current_in_filtered(void) {
-	return get_motor_now()->m_motor_state.i_bus; // TODO: Calculate filtered current?
+	return i_bus_with_loss(get_motor_now()); // TODO: Calculate filtered current?
 }
 
 /**

@@ -269,6 +269,60 @@
             <suffix> x</suffix>
             <vTx>9</vTx>
         </fault_slip_fac>
+        <flux_opt>
+            <longName>Light-Load Flux Floor</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Light-load flux reduction, encoder mode only. 0 turns it off. Otherwise the torque request is served with Id = Iq = sqrt(Id_mag * Iq request), never below this fraction of the Magnetizing Current: the same torque with less copper loss at light load, at the cost of a slower torque step (the rotor flux follows Id with tau_r). LispBM (acim-flux-opt x) overrides it until the next write.&lt;/p&gt;</description>
+            <cDefine>ACIM_FLUX_OPT</cDefine>
+            <editorDecimalsDouble>2</editorDecimalsDouble>
+            <editorScale>1</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>1</maxDouble>
+            <minDouble>0</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>0.05</stepDouble>
+            <valDouble>0</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix></suffix>
+            <vTx>9</vTx>
+        </flux_opt>
+        <inv_loss_r>
+            <longName>Inverter Loss Resistance</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Inverter loss model for the battery current estimate, which without a DC current sensor is the power delivered to the motor only. Adds 1.5 * R * |I|^2 + 1.5 * V * |I| of inverter loss (transistors, shunts, wiring; dead time and diodes in V). Calibrate both against a BMS or a DC clamp meter. 0 and 0 = off.&lt;/p&gt;</description>
+            <cDefine>ACIM_INV_LOSS_R</cDefine>
+            <editorDecimalsDouble>4</editorDecimalsDouble>
+            <editorScale>1</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>0.1</maxDouble>
+            <minDouble>0</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>0.0005</stepDouble>
+            <valDouble>0</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> Ohm</suffix>
+            <vTx>9</vTx>
+        </inv_loss_r>
+        <inv_loss_v>
+            <longName>Inverter Loss Voltage</longName>
+            <type>1</type>
+            <transmittable>1</transmittable>
+            <description>&lt;p&gt;Current-proportional part of the inverter loss model (see Inverter Loss Resistance).&lt;/p&gt;</description>
+            <cDefine>ACIM_INV_LOSS_V</cDefine>
+            <editorDecimalsDouble>3</editorDecimalsDouble>
+            <editorScale>1</editorScale>
+            <editAsPercentage>0</editAsPercentage>
+            <maxDouble>5</maxDouble>
+            <minDouble>0</minDouble>
+            <showDisplay>0</showDisplay>
+            <stepDouble>0.05</stepDouble>
+            <valDouble>0</valDouble>
+            <vTxDoubleScale>1</vTxDoubleScale>
+            <suffix> V</suffix>
+            <vTx>9</vTx>
+        </inv_loss_v>
     </Params>
     <SerOrder>
         <ser>enable</ser>
@@ -286,6 +340,9 @@
         <ser>obs_bw</ser>
         <ser>fault_flux_err</ser>
         <ser>fault_slip_fac</ser>
+        <ser>flux_opt</ser>
+        <ser>inv_loss_r</ser>
+        <ser>inv_loss_v</ser>
     </SerOrder>
     <Grouping>
         <group>
@@ -328,6 +385,14 @@
                 <subgroupParams>
                     <param>fault_flux_err</param>
                     <param>fault_slip_fac</param>
+                </subgroupParams>
+            </subgroup>
+            <subgroup>
+                <subgroupName>Efficiency</subgroupName>
+                <subgroupParams>
+                    <param>flux_opt</param>
+                    <param>inv_loss_r</param>
+                    <param>inv_loss_v</param>
                 </subgroupParams>
             </subgroup>
         </group>

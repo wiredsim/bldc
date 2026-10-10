@@ -54,6 +54,10 @@ float acim_rotor_phase(bool is_second_motor);
 // mode only while ACIM is driving. Otherwise use the normal FOC phase for speed estimation.
 bool acim_rotor_phase_valid(bool is_second_motor);
 
+// Inverter loss model for the battery current estimate: (1.5 R |I|^2 + 1.5 V |I|) / v_bus, with R
+// and V from the ACIM page. 0 when ACIM is inactive or both are 0.
+float acim_inverter_loss_current(bool is_second_motor, float i_abs, float v_bus);
+
 // Current-controller feed-forward using the stator frequency and the rotor flux
 void acim_decoupling(bool is_second_motor, const mc_configuration *conf, float id, float iq,
 		float *dec_vd, float *dec_vq, float *dec_bemf);

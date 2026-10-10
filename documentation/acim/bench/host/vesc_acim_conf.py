@@ -11,7 +11,8 @@ v = importlib.util.module_from_spec(spec); spec.loader.exec_module(v)
 GET, SET = 93, 95
 BYTES = ["enable", "speed_src"]
 FLOATS = ["id_mag", "tau_r", "lm", "lr_lm", "current_max", "slip_max", "flux_build_time",
-          "flux_hold_time", "sl_min_hz", "sl_if_ramp", "obs_bw", "fault_flux_err", "fault_slip_fac"]
+          "flux_hold_time", "sl_min_hz", "sl_if_ramp", "obs_bw", "fault_flux_err", "fault_slip_fac",
+          "flux_opt", "inv_loss_r", "inv_loss_v"]  # last three since 2026-10-10; older firmware sends 13
 
 def request(s, payload, want, timeout=3.0):
     for attempt in range(4):
@@ -28,14 +29,14 @@ def request(s, payload, want, timeout=3.0):
 
 def decode(body):
     sig = struct.unpack(">I", body[0:4])[0]
-    c = {"_sig": sig, "enable": body[4], "speed_src": body[5]}
-    for i, n in enumerate(FLOATS):
+    c = {"_sig": sig, "enable": body[4], "speed_src": body[5], "_nf": (len(body) - 6) // 4}
+    for i, n in enumerate(FLOATS[:c["_nf"]]):
         c[n] = struct.unpack(">f", body[6 + 4*i:10 + 4*i])[0]   # float32_auto == IEEE754 for normal values
     return c
 
 def encode(c):
     out = struct.pack(">IBB", c["_sig"], int(c["enable"]), int(c["speed_src"]))
-    return out + b"".join(struct.pack(">f", c[n]) for n in FLOATS)
+    return out + b"".join(struct.pack(">f", c[n]) for n in FLOATS[:c["_nf"]])
 
 s = socket.create_connection(("127.0.0.1", 65102), timeout=3)
 cur = decode(request(s, bytes([GET, 0]), GET)[2:])
@@ -46,9 +47,9 @@ if len(sys.argv) > 1:
     request(s, bytes([SET, 0]) + encode(cur), SET, timeout=6.0)
     time.sleep(0.5)
     back = decode(request(s, bytes([GET, 0]), GET)[2:])
-    bad = [k for k in BYTES + FLOATS if abs(float(back[k]) - float(cur[k])) > 1e-6 * max(1, abs(float(cur[k])))]
+    bad = [k for k in BYTES + FLOATS[:cur["_nf"]] if abs(float(back[k]) - float(cur[k])) > 1e-6 * max(1, abs(float(cur[k])))]
     cur = back
     print("VERIFY FAILED: " + ", ".join(bad) if bad else "written and verified")
-for k in BYTES + FLOATS:
+for k in BYTES + FLOATS[:cur["_nf"]]:
     print(f"  {k:16} {cur[k]}")
 s.close()
