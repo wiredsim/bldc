@@ -6,6 +6,12 @@ time. Standard library only.
 
 | Script | Does |
 |---|---|
+Build target for this bench: **`make 100_250_hi200_bsg`** (`hwconf/acim_bench/`). It is the
+100_250 config with the bench values as motor config defaults, because the VESC bootloader
+erases the emulated EEPROM (flash sectors 1-2) on every update, so a reflash lands on these
+defaults instead of 400 A abs current, -200 A regen and no ERPM limit. The ACIM page still
+resets to disabled; run the restore script after flashing.
+
 | `restore_bench_config.sh` | Writes the full bench motor config and ACIM page. **Run after every reflash**: flashing resets both to firmware defaults (60 A, 400 A abs, -200 A regen, 96 V, no ERPM limit, phase filters on) |
 | `vesc_mcconf.py` | Read or set any motor config field by its C name (`foc_dt_us`, `l_current_max`, ...). The byte layout is parsed from `confgenerator.c`, every other byte is sent back unchanged, and the write is read back and checked |
 | `vesc_acim_conf.py` | Read or set the ACIM page (custom config 0) |
