@@ -472,6 +472,12 @@ before the motor is released, on a magnetized, spinning induction motor. End ope
 with `(foc-openloop 0.0 <erpm>)` instead, which brings the current to zero in the same frame,
 and check the fault log after every run: `vesc_stream.py` now prints any new entries.
 
+Config wipe on reflash, 2026-10-10: the VESC bootloader erases flash sectors 0-7 on every
+update, and the emulated EEPROM is sectors 1-2. Flash the `100_250_hi200_bsg` target
+(hwconf/acim_bench/), which has the bench values as defaults: verified on the board, all 21
+motor config values read back at the bench settings straight after the flash, with nothing
+restored. The ACIM page still resets to disabled; run restore_bench_config.sh.
+
 Not done yet: steady load, absolute torque (torque arm), efficiency map.
 
 ## Reporting back
